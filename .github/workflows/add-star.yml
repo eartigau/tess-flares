@@ -118,9 +118,13 @@ jobs:
           git add data/status && git commit -q -m "status: ${{ steps.req.outputs.name }} queued" || true
           git push -q || true
 
+      # continue-on-error so the catalogue and the answer still happen when
+      # the pipeline raises: the status file holds the reason, the issue gets
+      # told, and the run still shows red because this step failed.
       - name: Compute the star
         if: steps.req.outputs.ok == 'true'
         id: compute
+        continue-on-error: true
         run: |
           cp -R data _pipeline/web/data_site
           cd _pipeline
@@ -147,7 +151,7 @@ jobs:
           PY
 
       - name: Commit the catalogue
-        if: steps.req.outputs.ok == 'true'
+        if: steps.req.outputs.ok == 'true' && always()
         run: |
           git add data
           git diff --staged --quiet && echo "nothing changed" && exit 0
@@ -176,3 +180,14 @@ jobs:
           fi
           gh issue close "${{ github.event.issue.number }}" \
             --repo "$GITHUB_REPOSITORY" --comment "$BODY"
+
+      # continue-on-error above lets the catalogue be committed and the issue
+      # answered even when the pipeline raised; without this the run would
+      # then show green, which is how the first NumPy 2 failure went
+      # unnoticed. The job goes red here, after everything useful has
+      # happened. A REFUSAL is not a failure and does not reach this.
+      - name: Go red if the pipeline raised
+        if: steps.compute.outcome == 'failure'
+        run: |
+          echo "the pipeline raised; see data/status/${{ steps.req.outputs.slug }}.json"
+          exit 1
