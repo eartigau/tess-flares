@@ -1,0 +1,317 @@
+{
+ "stars": [
+  {
+   "slug": "ad-leo",
+   "name": "AD Leo",
+   "aliases": [
+    "AD Leo",
+    "TIC 95431305"
+   ],
+   "tic": 95431305,
+   "tmag": 7.036,
+   "teff": null,
+   "n_flares": 574,
+   "exposure_days": 88.2742,
+   "rate_per_day": 6.50247,
+   "n_planets": 0,
+   "sectors": [
+    45,
+    46,
+    48,
+    72
+   ],
+   "min_amplitude": 0.03331287,
+   "bytes": 997990
+  },
+  {
+   "slug": "au-mic",
+   "name": "AU Mic",
+   "aliases": [
+    "AU Mic",
+    "AU Mic b",
+    "AU Mic c",
+    "AU Mic d",
+    "AU Mic e",
+    "TIC 441420236"
+   ],
+   "tic": 441420236,
+   "tmag": 6.755,
+   "teff": 3540.0,
+   "n_flares": 219,
+   "exposure_days": 66.6806,
+   "rate_per_day": 3.28431,
+   "n_planets": 4,
+   "sectors": [
+    1,
+    27,
+    95
+   ],
+   "min_amplitude": 0.00199044,
+   "bytes": 623332
+  },
+  {
+   "slug": "ev-lac",
+   "name": "EV Lac",
+   "aliases": [
+    "EV Lac",
+    "TIC 154101678"
+   ],
+   "tic": 154101678,
+   "tmag": 7.73041,
+   "teff": 3311.0,
+   "n_flares": 498,
+   "exposure_days": 118.5587,
+   "rate_per_day": 4.20045,
+   "n_planets": 0,
+   "sectors": [
+    16,
+    56,
+    57,
+    83,
+    84
+   ],
+   "min_amplitude": 0.00369192,
+   "bytes": 879400
+  },
+  {
+   "slug": "gj-1243",
+   "name": "GJ 1243",
+   "aliases": [
+    "GJ 1243",
+    "TIC 273589987"
+   ],
+   "tic": 273589987,
+   "tmag": 10.2463,
+   "teff": 3261.0,
+   "n_flares": 274,
+   "exposure_days": 217.0951,
+   "rate_per_day": 1.26212,
+   "n_planets": 0,
+   "sectors": [
+    14,
+    15,
+    41,
+    54,
+    55,
+    74,
+    75,
+    81,
+    82
+   ],
+   "min_amplitude": 0.00910015,
+   "bytes": 586745
+  },
+  {
+   "slug": "gj-674",
+   "name": "GJ 674",
+   "aliases": [
+    "GJ 674",
+    "GJ 674 b",
+    "TIC 218263393"
+   ],
+   "tic": 218263393,
+   "tmag": 7.15787,
+   "teff": 3600.0,
+   "n_flares": 62,
+   "exposure_days": 136.7551,
+   "rate_per_day": 0.45337,
+   "n_planets": 1,
+   "sectors": [
+    12,
+    39,
+    66,
+    93,
+    103,
+    104
+   ],
+   "min_amplitude": 0.00186796,
+   "bytes": 254285
+  },
+  {
+   "slug": "lhs-1140",
+   "name": "LHS 1140",
+   "aliases": [
+    "LHS 1140",
+    "LHS 1140 b",
+    "LHS 1140 c",
+    "TIC 92226327"
+   ],
+   "tic": 92226327,
+   "tmag": 11.2991,
+   "teff": 3096.0,
+   "n_flares": 1,
+   "exposure_days": 59.2428,
+   "rate_per_day": 0.01688,
+   "n_planets": 2,
+   "sectors": [
+    3,
+    30,
+    107
+   ],
+   "min_amplitude": 0.01606258,
+   "bytes": 16026
+  },
+  {
+   "slug": "proxima-cen",
+   "name": "Proxima Cen",
+   "aliases": [
+    "Proxima Cen",
+    "Proxima Cen b",
+    "Proxima Cen d",
+    "TIC 388857263"
+   ],
+   "tic": 388857263,
+   "tmag": 7.36,
+   "teff": 2900.0,
+   "n_flares": 464,
+   "exposure_days": 190.5575,
+   "rate_per_day": 2.43496,
+   "n_planets": 2,
+   "sectors": [
+    11,
+    12,
+    38,
+    65,
+    99,
+    100,
+    101,
+    102
+   ],
+   "min_amplitude": 0.00226377,
+   "bytes": 748190
+  },
+  {
+   "slug": "toi-3235",
+   "name": "TOI-3235",
+   "aliases": [
+    "TIC 243641947",
+    "TOI-3235",
+    "TOI-3235 b"
+   ],
+   "tic": 243641947,
+   "tmag": 13.2486,
+   "teff": 3388.8,
+   "n_flares": 10,
+   "exposure_days": 67.018,
+   "rate_per_day": 0.14921,
+   "n_planets": 1,
+   "sectors": [
+    64,
+    101,
+    102
+   ],
+   "min_amplitude": 0.05852744,
+   "bytes": 26167
+  },
+  {
+   "slug": "toi-700",
+   "name": "TOI-700",
+   "aliases": [
+    "TIC 150428135",
+    "TOI-700",
+    "TOI-700 b",
+    "TOI-700 c",
+    "TOI-700 d",
+    "TOI-700 e"
+   ],
+   "tic": 150428135,
+   "tmag": 10.9102,
+   "teff": 3459.0,
+   "n_flares": 9,
+   "exposure_days": 796.12,
+   "rate_per_day": 0.0113,
+   "n_planets": 4,
+   "sectors": [
+    1,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    13,
+    27,
+    28,
+    30,
+    31,
+    33,
+    34,
+    35,
+    36,
+    37,
+    38,
+    61,
+    62,
+    63,
+    64,
+    65,
+    66,
+    68,
+    69,
+    87,
+    88,
+    89,
+    90,
+    93,
+    95,
+    96,
+    97
+   ],
+   "min_amplitude": 0.01139945,
+   "bytes": 131787
+  },
+  {
+   "slug": "trappist-1",
+   "name": "TRAPPIST-1",
+   "aliases": [
+    "TIC 278892590",
+    "TRAPPIST-1",
+    "TRAPPIST-1 b",
+    "TRAPPIST-1 c",
+    "TRAPPIST-1 d",
+    "TRAPPIST-1 e",
+    "TRAPPIST-1 f",
+    "TRAPPIST-1 g",
+    "TRAPPIST-1 h"
+   ],
+   "tic": 278892590,
+   "tmag": 13.8529,
+   "teff": 2566.0,
+   "n_flares": 1,
+   "exposure_days": 17.2131,
+   "rate_per_day": 0.0581,
+   "n_planets": 7,
+   "sectors": [
+    70
+   ],
+   "min_amplitude": 0.10175925,
+   "bytes": 85866
+  },
+  {
+   "slug": "yz-cmi",
+   "name": "YZ CMi",
+   "aliases": [
+    "TIC 266744225",
+    "YZ CMi"
+   ],
+   "tic": 266744225,
+   "tmag": 8.33732,
+   "teff": 3181.0,
+   "n_flares": 380,
+   "exposure_days": 70.2696,
+   "rate_per_day": 5.40774,
+   "n_planets": 0,
+   "sectors": [
+    7,
+    34,
+    88
+   ],
+   "min_amplitude": 0.00385416,
+   "bytes": 657754
+  }
+ ],
+ "generated": "2026-10-04"
+}

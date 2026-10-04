@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>tess-flares</title>
+<meta name="description" content="Flare rates from TESS, and whether a star's flares are locked to a planet's orbital phase.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/theme.css">
+<link rel="stylesheet" href="assets/app.css">
+<script src="https://cdn.jsdelivr.net/npm/plotly.js-dist-min@2.35.2/plotly.min.js"></script>
+</head>
+<body>
+<div class="bg-orb orb-a"></div>
+<div class="bg-orb orb-b"></div>
+
+<div class="site-banner">
+  <div class="site-banner-inner">
+    <div class="site-banner-text">
+      <h2>tess-flares</h2>
+      <p data-i18n="tagline">Flare rates from TESS, and whether they follow a planet's orbit</p>
+    </div>
+    <button id="lang" class="home-link" type="button">FR</button>
+    <a href="https://eartigau.github.io/" class="home-link" data-i18n="home">Home</a>
+  </div>
+</div>
+
+<nav class="tabs">
+  <button type="button" class="tab on" data-tab="star" data-i18n="tab_star">Star</button>
+  <button type="button" class="tab" data-tab="saved"><span data-i18n="tab_saved">Saved stars</span> <span class="count" id="nsaved">0</span></button>
+  <button type="button" class="tab" data-tab="methods" data-i18n="tab_methods">Methods &amp; references</button>
+</nav>
+
+<!-- ════════════════════════════ THE STAR ════════════════════════════ -->
+<main class="layout on" id="tab-star">
+
+  <section class="card span-3">
+    <h2><span data-i18n="pick_star">Star</span> <button type="button" class="info" data-help="star" aria-label="?">i</button></h2>
+    <p class="hint" data-i18n="pick_hint">Type a name: the host, any of its planets, or its TIC. Only stars in the precomputed catalogue are available.</p>
+    <div class="row">
+      <div class="suggest">
+        <input id="q" type="text" autocomplete="off" spellcheck="false" placeholder="AU Mic, TOI-3235 b, TIC 441420236...">
+        <div class="menu" id="menu"></div>
+      </div>
+      <button id="go" class="go" type="button" data-i18n="load">Load</button>
+      <button id="rand" class="small" type="button" data-i18n="random">Random</button>
+    </div>
+    <div id="msg"></div>
+  </section>
+
+  <section class="card span-3" id="overview" hidden>
+    <h2><span id="starname"></span></h2>
+    <p class="hint" id="staridents"></p>
+    <div class="stats" id="starstats"></div>
+  </section>
+
+  <!-- the series, as wide as the window -->
+  <section class="card bleed" id="seriescard" hidden>
+    <h2><span data-i18n="series">TESS light curve</span> <button type="button" class="info" data-help="series" aria-label="?">i</button></h2>
+    <p class="hint" data-i18n="series_hint">Normalised, detrended flux. Detected flares are marked. Drag to zoom; double-click to reset.</p>
+    <div id="series" class="plot"></div>
+    <p class="plotnote" id="seriesnote"></p>
+  </section>
+
+  <section class="card span-3" id="ratecard" hidden>
+    <h2><span data-i18n="rates">Flare rate</span> <button type="button" class="info" data-help="rate" aria-label="?">i</button></h2>
+    <div class="stats" id="ratestats"></div>
+    <div id="ratetable"></div>
+  </section>
+
+  <!-- the period to fold on -->
+  <section class="card span-3" id="periodcard" hidden>
+    <h2><span data-i18n="period">Fold on a period</span> <button type="button" class="info" data-help="period" aria-label="?">i</button></h2>
+    <p class="hint" data-i18n="period_hint">Pick a known planet, the rotation period, or type any period you like. Everything below is recomputed in your browser.</p>
+    <div class="row" id="periodpills"></div>
+    <div class="row">
+      <label for="P" data-i18n="period_d">Period [d]</label>
+      <input id="P" type="number" step="any" min="0.01" style="width:150px">
+      <label for="T0">T<sub>0</sub> [BJD]</label>
+      <input id="T0" type="number" step="any" style="width:190px">
+      <button type="button" class="info" data-help="t0" aria-label="?">i</button>
+      <button id="apply" class="small" type="button" data-i18n="apply">Apply</button>
+      <span class="hint" id="periodsrc"></span>
+    </div>
+  </section>
+
+  <section class="card span-2" id="phasecard" hidden>
+    <h2><span data-i18n="phase">Flares folded on phase</span> <button type="button" class="info" data-help="phasefold" aria-label="?">i</button></h2>
+    <div id="phaseplot" class="plot"></div>
+    <p class="plotnote" data-i18n="phase_note">Bars: flares per phase bin. Line: the exposure the light curve actually has at that phase, scaled to the expected count.</p>
+  </section>
+
+  <section class="card" id="cdfcard" hidden>
+    <h2><span data-i18n="cdf">Kuiper test</span> <button type="button" class="info" data-help="kuiper" aria-label="?">i</button></h2>
+    <div id="cdfplot" class="plot"></div>
+    <p class="plotnote" data-i18n="cdf_note">The flares' cumulative distribution against the exposure's. V is the largest gap above plus the largest below.</p>
+  </section>
+
+  <section class="card span-3" id="synccard" hidden>
+    <h2><span data-i18n="sync">Are the flares synchronised?</span> <button type="button" class="info" data-help="sync" aria-label="?">i</button></h2>
+    <div class="stats" id="syncstats"></div>
+    <div id="verdict"></div>
+    <h3><span data-i18n="poisson">Poisson excess per phase bin</span> <button type="button" class="info" data-help="poisson" aria-label="?">i</button></h3>
+    <div id="poissontable"></div>
+    <div class="row" style="margin-top:14px">
+      <button id="save" class="go" type="button" data-i18n="save">Save this star</button>
+      <span class="hint" data-i18n="save_hint">Kept in this browser, and compiled in the Saved stars tab.</span>
+    </div>
+  </section>
+
+  <section class="card span-3" id="flarecard" hidden>
+    <h2><span data-i18n="catalog">Flare catalogue</span> <button type="button" class="info" data-help="catalog" aria-label="?">i</button></h2>
+    <div id="flaretable"></div>
+  </section>
+</main>
+
+<!-- ═══════════════════════════ SAVED STARS ══════════════════════════ -->
+<main class="layout" id="tab-saved">
+  <section class="card span-3">
+    <h2 data-i18n="saved_title">Saved stars</h2>
+    <p class="hint" data-i18n="saved_hint">Everything you saved, compiled. Stored in this browser only; nothing is uploaded.</p>
+    <div class="row">
+      <button id="exportcsv" class="small" type="button" data-i18n="export">Export CSV</button>
+      <button id="clearsaved" class="small ghost" type="button" data-i18n="clear">Clear all</button>
+    </div>
+    <div id="savedtable"></div>
+  </section>
+  <section class="card span-3" id="savedplotcard" hidden>
+    <h2><span data-i18n="saved_plot">Rate against temperature</span> <button type="button" class="info" data-help="savedplot" aria-label="?">i</button></h2>
+    <div id="savedplot" class="plot"></div>
+  </section>
+</main>
+
+<!-- ═════════════════════ METHODS AND REFERENCES ═════════════════════ -->
+<main class="layout" id="tab-methods">
+  <section class="card span-3 prose" id="methods"></section>
+</main>
+
+<script type="module" src="assets/i18n.js"></script>
+<script type="module" src="assets/app.js"></script>
+</body>
+</html>

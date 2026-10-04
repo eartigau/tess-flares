@@ -1,0 +1,132 @@
+/*
+ * The page's words, in both languages, and the text each (i) shows.
+ *
+ * The help texts carry their own references, because a number on a page
+ * without the method behind it is not a result. Where a choice was made
+ * (a threshold, a window, a correction), the text says what it was and why,
+ * not only that one exists.
+ */
+
+export const UI = {
+  en: {
+    tagline: "Flare rates from TESS, and whether they follow a planet's orbit",
+    home: "Home", tab_star: "Star", tab_saved: "Saved stars",
+    tab_methods: "Methods & references",
+    pick_star: "Star",
+    pick_hint: "Type a name: the host, any of its planets, or its TIC. Only stars in the precomputed catalogue are available.",
+    load: "Load", random: "Random",
+    series: "TESS light curve",
+    series_hint: "Normalised, detrended flux. Detected flares are marked. Drag to zoom; double-click to reset.",
+    rates: "Flare rate", period: "Fold on a period",
+    period_hint: "Pick a known planet, the rotation period, or type any period you like. Everything below is recomputed in your browser.",
+    period_d: "Period [d]", apply: "Apply",
+    phase: "Flares folded on phase",
+    phase_note: "Bars: flares per phase bin. Line: the exposure the light curve actually has at that phase, scaled to the expected count.",
+    cdf: "Kuiper test",
+    cdf_note: "The flares' cumulative distribution against the exposure's. V is the largest gap above plus the largest below.",
+    sync: "Are the flares synchronised?",
+    poisson: "Poisson excess per phase bin",
+    save: "Save this star",
+    save_hint: "Kept in this browser, and compiled in the Saved stars tab.",
+    catalog: "Flare catalogue",
+    saved_title: "Saved stars",
+    saved_hint: "Everything you saved, compiled. Stored in this browser only; nothing is uploaded.",
+    export: "Export CSV", clear: "Clear all",
+    saved_plot: "Rate against temperature",
+    // runtime
+    loading: "Loading", not_found: "No star of that name in the catalogue.",
+    no_flares: "No flare was detected on this star.",
+    flares: "flares", detections: "detections", events: "events",
+    per_day: "per day", per_cycle: "per cycle", exposure: "Exposure",
+    sectors: "Sectors", cadences: "Cadences", threshold: "Detection floor",
+    upper_limit: "95% upper limit", rate: "Rate", nothing_saved: "Nothing saved yet.",
+  },
+  fr: {
+    tagline: "Taux de flares d'après TESS, et s'ils suivent l'orbite d'une planète",
+    home: "Accueil", tab_star: "Étoile", tab_saved: "Étoiles gardées",
+    tab_methods: "Méthodes et références",
+    pick_star: "Étoile",
+    pick_hint: "Tapez un nom : l'étoile, une de ses planètes, ou son TIC. Seules les étoiles du catalogue précalculé sont disponibles.",
+    load: "Charger", random: "Au hasard",
+    series: "Courbe de lumière TESS",
+    series_hint: "Flux normalisé et détendancé. Les flares détectés sont marqués. Glissez pour zoomer, double-cliquez pour revenir.",
+    rates: "Taux de flares", period: "Replier sur une période",
+    period_hint: "Choisissez une planète connue, la période de rotation, ou tapez la période que vous voulez. Tout ce qui suit est recalculé dans votre navigateur.",
+    period_d: "Période [j]", apply: "Appliquer",
+    phase: "Flares repliés en phase",
+    phase_note: "Barres : flares par intervalle de phase. Ligne : l'exposition réellement disponible à cette phase, mise à l'échelle du nombre attendu.",
+    cdf: "Test de Kuiper",
+    cdf_note: "La distribution cumulée des flares contre celle de l'exposition. V est le plus grand écart au-dessus plus le plus grand en dessous.",
+    sync: "Les flares sont-ils synchronisés ?",
+    poisson: "Excès de Poisson par intervalle de phase",
+    save: "Garder cette étoile",
+    save_hint: "Conservée dans ce navigateur, et compilée dans l'onglet Étoiles gardées.",
+    catalog: "Catalogue de flares",
+    saved_title: "Étoiles gardées",
+    saved_hint: "Tout ce que vous avez gardé, compilé. Stocké dans ce navigateur seulement ; rien n'est envoyé.",
+    export: "Exporter en CSV", clear: "Tout effacer",
+    saved_plot: "Taux en fonction de la température",
+    loading: "Chargement", not_found: "Aucune étoile de ce nom dans le catalogue.",
+    no_flares: "Aucun flare détecté sur cette étoile.",
+    flares: "flares", detections: "détections", events: "événements",
+    per_day: "par jour", per_cycle: "par cycle", exposure: "Exposition",
+    sectors: "Secteurs", cadences: "Cadences", threshold: "Seuil de détection",
+    upper_limit: "limite supérieure à 95 %", rate: "Taux",
+    nothing_saved: "Rien de gardé pour l'instant.",
+  },
+};
+
+/* The (i) boxes. `cite` is rendered under the text, in smaller type. */
+export const HELP = {
+  star: {
+    en: "The catalogue is precomputed: a browser cannot query MAST, download a TESS light curve or run a flare detection, so each star here was processed in advance by the syncflares pipeline and its result shipped as a data file.\n\nWhat IS computed live, in your browser, is everything that depends on the period you choose: the phase fold, the Kuiper test and the Poisson search. That is why you can type any period and get an answer immediately.\n\nYou can search by the host's name (AU Mic), by any of its planets (AU Mic b), or by TIC number.",
+    fr: "Le catalogue est précalculé : un navigateur ne peut pas interroger MAST, télécharger une courbe de lumière TESS ni exécuter une détection de flares. Chaque étoile a donc été traitée à l'avance par le pipeline syncflares et son résultat livré en fichier de données.\n\nCe qui EST calculé en direct, dans votre navigateur, c'est tout ce qui dépend de la période choisie : le repliement en phase, le test de Kuiper et la recherche de Poisson. C'est pourquoi vous pouvez taper n'importe quelle période et obtenir une réponse tout de suite.\n\nVous pouvez chercher par le nom de l'étoile (AU Mic), par une de ses planètes (AU Mic b), ou par numéro TIC.",
+  },
+  series: {
+    en: "The TESS light curve after detrending, normalised so the quiescent level is 1. Detected flares are marked in orange.\n\nWhat was done to it: the flux of each sector was divided by a running median over a 3-hour window. A median, not a mean, because a median does not follow a dip or a spike that occupies less than half its window, so a flare passes through the filter untouched while the star's rotation and the instrument's drifts do not.\n\nFor display the series is binned to about 4000 points, except within 6 hours of a flare, where every cadence is kept: a flare still looks like a flare when you zoom in. Binning uses the median too, so a flare inside a bin does not drag the quiescent level up.\n\nIn-transit cadences of known transiting planets are removed, because the detrending baseline is only interpolated across them and a flare landing on a transit is not reliably recoverable.",
+    fr: "La courbe de lumière TESS après détendancement, normalisée pour que le niveau au repos soit 1. Les flares détectés sont marqués en orange.\n\nCe qui lui a été fait : le flux de chaque secteur a été divisé par une médiane glissante sur une fenêtre de 3 heures. Une médiane, pas une moyenne, parce qu'une médiane ne suit pas un creux ou un pic qui occupe moins de la moitié de sa fenêtre : un flare traverse donc le filtre intact, alors que la rotation de l'étoile et les dérives de l'instrument, non.\n\nPour l'affichage la série est groupée en environ 4000 points, sauf à moins de 6 heures d'un flare, où chaque cadence est gardée : un flare ressemble encore à un flare quand on zoome. Le groupement utilise aussi la médiane, pour qu'un flare dans un intervalle ne tire pas le niveau au repos vers le haut.\n\nLes cadences en transit des planètes transitantes connues sont retirées : la ligne de base n'y est qu'interpolée, et un flare tombant sur un transit n'est pas récupérable de façon fiable.",
+    cite: "Detrending: a running median, as in Medina et al. (2020) ApJ 905, 107, with the window set to 3 h.",
+  },
+  rate: {
+    en: "Two numbers, and they are not the same.\n\nDETECTIONS is how many times the detector fired: N consecutive cadences at least 3 sigma above the baseline noise. EVENTS groups detections closer than one hour into one flare, because the detector requires STRICTLY consecutive points, so a single flare whose decay dips below threshold and comes back is recorded several times. On TOI-3235 that is the difference between 10 detections and 2 events, and between 0.149 and 0.030 flares per day.\n\nThe rate quoted is per day of EXPOSURE, not per day of elapsed time: TESS observes in sectors with gaps between them and a downlink gap inside each, and the exposure counts only cadences that exist, with in-transit ones removed.\n\nThe DETECTION FLOOR is the shallowest flare this star could have shown: about 3 times the per-cadence noise. It varies by a factor of several between stars of different brightness, and a rate of zero means nothing without it. A zero on a star with a 2.7% floor is a far stronger statement than a zero on a star with a 12% floor.\n\nFor a star with no detection the rate is quoted as a 95% upper limit, from the Poisson interval: zero events over an exposure T gives a rate below 3.0/T.",
+    fr: "Deux nombres, et ils ne sont pas équivalents.\n\nDÉTECTIONS est le nombre de fois où le détecteur s'est déclenché : N cadences consécutives à au moins 3 sigma au-dessus du bruit. ÉVÉNEMENTS regroupe en un seul flare les détections séparées de moins d'une heure, parce que le détecteur exige des points STRICTEMENT consécutifs : un flare dont la décroissance repasse sous le seuil puis remonte est compté plusieurs fois. Sur TOI-3235, c'est la différence entre 10 détections et 2 événements, et entre 0,149 et 0,030 flare par jour.\n\nLe taux est donné par jour d'EXPOSITION, pas par jour écoulé : TESS observe par secteurs, avec des trous entre eux et un trou de télémesure dans chacun. L'exposition ne compte que les cadences qui existent, celles en transit retirées.\n\nLe SEUIL DE DÉTECTION est le flare le moins profond que cette étoile aurait pu montrer : environ 3 fois le bruit par cadence. Il varie d'un facteur plusieurs entre étoiles de luminosité différente, et un taux nul ne veut rien dire sans lui. Un zéro sur une étoile à seuil de 2,7 % est bien plus contraignant qu'un zéro sur une étoile à seuil de 12 %.\n\nPour une étoile sans détection, le taux est donné comme limite supérieure à 95 %, par l'intervalle de Poisson : zéro événement sur une exposition T donne un taux inférieur à 3,0/T.",
+    cite: "Detection: Medina et al. (2020) ApJ 905, 107. Poisson interval: Garwood (1936) Biometrika 28, 437.",
+  },
+  period: {
+    en: "The period the flares are folded on. Any value works: the catalogue ships the flare times and the exposure intervals, and the statistics are recomputed here from scratch each time you change it.\n\nThe buttons offer the periods already known for this star: each planet's orbital period from the NASA Exoplanet Archive, and the stellar rotation period where the archive has one. Rotation matters because a flare rate that varies with ROTATION phase is ordinary stellar activity (active longitudes), while one that varies with ORBITAL phase would be the star-planet interaction this tool looks for. If both give a signal, rotation is by far the likelier explanation.\n\nA caution on searching many periods: the p-values below are for ONE period, chosen in advance. If you scan a hundred periods and keep the best, you should expect a p of about 0.01 by chance alone. The tool will not stop you, but it does not correct for it either.",
+    fr: "La période sur laquelle les flares sont repliés. N'importe quelle valeur fonctionne : le catalogue livre les dates des flares et les intervalles d'exposition, et les statistiques sont recalculées ici à chaque changement.\n\nLes boutons proposent les périodes déjà connues de cette étoile : la période orbitale de chaque planète d'après la NASA Exoplanet Archive, et la période de rotation stellaire quand l'archive en donne une. La rotation compte, parce qu'un taux de flares qui varie avec la phase de ROTATION est de l'activité stellaire ordinaire (longitudes actives), alors qu'un taux variant avec la phase ORBITALE serait l'interaction étoile-planète que cet outil cherche. Si les deux donnent un signal, la rotation est de loin l'explication la plus probable.\n\nUne mise en garde sur l'exploration de nombreuses périodes : les p-valeurs ci-dessous valent pour UNE période, choisie à l'avance. Si vous balayez cent périodes et gardez la meilleure, attendez-vous à un p d'environ 0,01 par pur hasard. L'outil ne vous en empêchera pas, mais il ne corrige pas non plus.",
+  },
+  t0: {
+    en: "The reference date, phase 0. For a transiting planet it is the mid-transit time from the archive, so phase 0 is the transit and phase 0.5 the far side of the orbit. For any other period it is arbitrary, and it shifts the picture without changing the Kuiper test at all: V is invariant under a shift of the phase origin, which is the main reason that test is used here rather than Kolmogorov-Smirnov.\n\nThe Poisson bin search is NOT invariant: moving T0 moves the bin edges, and an excess straddling an edge is split between two bins. If a signal appears in Kuiper but not in the bins, try shifting T0 by half a bin.",
+    fr: "La date de référence, la phase 0. Pour une planète transitante c'est l'instant du milieu du transit d'après l'archive : la phase 0 est donc le transit et la phase 0,5 l'autre côté de l'orbite. Pour toute autre période elle est arbitraire, et la déplacer change l'image sans rien changer au test de Kuiper : V est invariant par décalage de l'origine des phases, ce qui est la raison principale d'utiliser ce test plutôt que Kolmogorov-Smirnov.\n\nLa recherche de Poisson par intervalles n'est PAS invariante : déplacer T0 déplace les bords des intervalles, et un excès à cheval sur un bord est réparti entre deux. Si un signal apparaît chez Kuiper mais pas dans les intervalles, essayez de décaler T0 d'un demi-intervalle.",
+  },
+  phasefold: {
+    en: "Every flare placed at its orbital phase, counted in bins.\n\nThe line is not a flat expectation. It is the EXPOSURE the light curve actually has at each phase, scaled to the total number of flares. That correction matters: TESS does not sample every phase equally, and for a period close to a fraction of a sector length some phases get much more coverage than others. Comparing counts against a flat line would then produce an excess wherever the coverage happens to be good, which is an artefact of the observing window, not the star.\n\nThe exposure is computed from the coverage intervals shipped with the star, integrated exactly over each phase bin, so it is correct for any period you type and not only for the ones precomputed.",
+    fr: "Chaque flare placé à sa phase orbitale, compté par intervalles.\n\nLa ligne n'est pas une attente plate. C'est l'EXPOSITION réellement disponible à chaque phase, mise à l'échelle du nombre total de flares. Cette correction est essentielle : TESS n'échantillonne pas toutes les phases également, et pour une période proche d'une fraction de la durée d'un secteur, certaines phases sont bien mieux couvertes que d'autres. Comparer les comptes à une ligne plate produirait alors un excès là où la couverture est bonne, ce qui est un artefact de la fenêtre d'observation, pas une propriété de l'étoile.\n\nL'exposition est calculée à partir des intervalles de couverture livrés avec l'étoile, intégrée exactement sur chaque intervalle de phase : elle est donc correcte pour n'importe quelle période tapée, pas seulement pour celles précalculées.",
+  },
+  kuiper: {
+    en: "Kuiper's test asks whether the flares' phases are drawn from the exposure's own phase distribution.\n\nIt is the circular analogue of Kolmogorov-Smirnov. Where KS uses D, the largest gap between the empirical and the reference cumulative distribution, Kuiper uses V = D+ + D-, the largest gap above plus the largest below. The reason is that phase 0 is an arbitrary cut on a circle, not a boundary: an excess straddling phase 0/1 would look artificially weak to KS depending on where the cut happened to fall, and V is invariant under any shift of the origin.\n\nThe reference distribution here is NOT uniform. It is the exposure-weighted phase coverage, so a gap in the data contributes no expectation and is not read as a deficit of flares.\n\nThe p-value comes from the asymptotic series with Stephens' finite-sample correction. It is reliable for n above about 8; below that it is optimistic, and a small-n result should be read as suggestive at best.",
+    fr: "Le test de Kuiper demande si les phases des flares sont tirées de la distribution en phase de l'exposition elle-même.\n\nC'est l'analogue circulaire de Kolmogorov-Smirnov. Là où KS utilise D, le plus grand écart entre la distribution cumulée empirique et la référence, Kuiper utilise V = D+ + D-, le plus grand écart au-dessus plus le plus grand en dessous. La raison : la phase 0 est une coupure arbitraire sur un cercle, pas une frontière. Un excès à cheval sur la phase 0/1 paraîtrait artificiellement faible à KS selon l'endroit de la coupure, alors que V est invariant par tout décalage de l'origine.\n\nLa distribution de référence n'est PAS uniforme ici. C'est la couverture en phase pondérée par l'exposition : un trou dans les données n'apporte aucune attente et n'est donc pas lu comme un déficit de flares.\n\nLa p-valeur vient de la série asymptotique avec la correction d'échantillon fini de Stephens. Elle est fiable pour n au-dessus d'environ 8 ; en dessous elle est optimiste, et un résultat à petit n doit être lu comme suggestif au mieux.",
+    cite: "Kuiper (1960) Proc. K. Ned. Akad. Wet. A 63, 38. Stephens (1970) JRSS B 32, 115. Press et al., Numerical Recipes 3rd ed., §14.3.4.",
+  },
+  sync: {
+    en: "The conclusion, and what it rests on.\n\nThe test is run twice. RAW uses every detection. BRIGHTEST-PER-CYCLE keeps at most one flare per orbital cycle, the brightest, and the conclusion is driven by that one. The reason: a single flaring episode spanning several detected sub-peaks inside one orbit counts, in the raw list, as several independent events at the same phase, which is exactly what a phase-locked signal looks like. One storm can therefore manufacture a detection. Collapsing to one event per cycle removes that failure mode and costs only sensitivity.\n\nRead a p-value here as a screening statistic, not a discovery. It is uncorrected for the number of stars you look at and for the number of periods you try, it assumes flares are independent events (they are not: they cluster), and a star whose flares arrive in storms will produce small p-values without any planet involved.\n\nA real star-planet magnetic interaction would show: a signal at the ORBITAL period but not at the rotation period, persisting across sectors rather than confined to one, and surviving when the brightest-per-cycle reduction is applied.",
+    fr: "La conclusion, et ce sur quoi elle repose.\n\nLe test est fait deux fois. BRUT utilise toutes les détections. LE PLUS BRILLANT PAR CYCLE ne garde au plus qu'un flare par cycle orbital, le plus brillant, et c'est celui-là qui porte la conclusion. La raison : un seul épisode éruptif étalé sur plusieurs sous-pics détectés dans une même orbite compte, dans la liste brute, comme plusieurs événements indépendants à la même phase, ce qui est exactement l'allure d'un signal verrouillé en phase. Une seule tempête peut donc fabriquer une détection. Réduire à un événement par cycle supprime ce mode de défaillance et ne coûte que de la sensibilité.\n\nLisez une p-valeur ici comme une statistique de tri, pas comme une découverte. Elle n'est corrigée ni du nombre d'étoiles regardées ni du nombre de périodes essayées, elle suppose les flares indépendants (ils ne le sont pas : ils se regroupent), et une étoile dont les flares arrivent par tempêtes produira de petites p-valeurs sans aucune planète.\n\nUne vraie interaction magnétique étoile-planète montrerait : un signal à la période ORBITALE mais pas à la période de rotation, persistant d'un secteur à l'autre plutôt que confiné à un seul, et survivant à la réduction au plus brillant par cycle.",
+    cite: "On the phenomenon: Shkolnik et al. (2005) ApJ 622, 1075; Shkolnik et al. (2008) ApJ 676, 628. On the difficulty of confirming it: Miller et al. (2015) ApJ 799, 163.",
+  },
+  poisson: {
+    en: "A complementary test to Kuiper, sensitive to a different thing.\n\nPhase is cut into bins; each bin's expected count is the total number of flares times that bin's share of the exposure; the p-value is the Poisson probability of seeing at least the observed count. A bin falling in a data gap expects nothing and is not penalised for holding nothing.\n\nFour binnings are shown (2, 4, 8, 16) because the right one depends on how wide the excess is, which is not known in advance: a narrow excess is diluted by coarse bins, and a broad one is split by fine ones. Within each binning the p-values are Bonferroni-corrected across its own bins. They are NOT corrected across the four binnings: those are four views of one dataset, not thirty independent trials, and multiplying by thirty would be a wrong correction in the conservative direction.\n\nKuiper is sensitive to a smooth shift of the whole distribution; the bins are sensitive to a sharp excess in one place. A real signal usually shows in both.",
+    fr: "Un test complémentaire de celui de Kuiper, sensible à autre chose.\n\nLa phase est découpée en intervalles ; le compte attendu dans chacun est le nombre total de flares multiplié par la part d'exposition de cet intervalle ; la p-valeur est la probabilité de Poisson d'observer au moins le compte constaté. Un intervalle tombant dans un trou de données n'attend rien et n'est donc pas pénalisé d'être vide.\n\nQuatre découpages sont montrés (2, 4, 8, 16) parce que le bon dépend de la largeur de l'excès, inconnue d'avance : un excès étroit est dilué par des intervalles grossiers, un excès large est coupé par des intervalles fins. Dans chaque découpage, les p-valeurs sont corrigées de Bonferroni sur ses propres intervalles. Elles ne le sont PAS entre les quatre découpages : ce sont quatre vues d'un même jeu de données, pas trente essais indépendants, et multiplier par trente serait une correction fausse, dans le sens conservateur.\n\nKuiper est sensible à un déplacement doux de toute la distribution ; les intervalles le sont à un excès marqué en un endroit. Un vrai signal se voit en général dans les deux.",
+    cite: "Bonferroni correction: Dunn (1961) JASA 56, 52.",
+  },
+  catalog: {
+    en: "Every detection, with what was measured.\n\nAMPLITUDE is the peak flux above the quiescent level, in percent. SIGMA is how far the peak sits above the local noise. EQUIVALENT DURATION is the integral of the flare's relative flux over time, in seconds: the time the quiet star would need to emit the same energy. It is the standard measure because it needs no distance and no bolometric correction, only the star's own quiescent flux.\n\nDetections above 4 times the quiescent flux are rejected before they reach this table. No white-light flare looks like that; what does is a bad cadence, and on one QLP target such cadences produced 49 spurious flares up to 7451% amplitude before the ceiling was added.",
+    fr: "Chaque détection, avec ce qui a été mesuré.\n\nAMPLITUDE est le flux au pic au-dessus du niveau de repos, en pourcent. SIGMA dit de combien le pic dépasse le bruit local. DURÉE ÉQUIVALENTE est l'intégrale du flux relatif du flare dans le temps, en secondes : le temps qu'il faudrait à l'étoile au repos pour émettre la même énergie. C'est la mesure standard parce qu'elle ne demande ni distance ni correction bolométrique, seulement le flux de repos de l'étoile elle-même.\n\nLes détections au-dessus de 4 fois le flux de repos sont rejetées avant d'arriver dans ce tableau. Aucun flare en lumière blanche ne ressemble à cela ; ce qui y ressemble, c'est une mauvaise cadence : sur une cible QLP, de telles cadences avaient produit 49 faux flares jusqu'à 7451 % d'amplitude avant l'ajout du plafond.",
+    cite: "Equivalent duration: Gershberg (1972) Ap&SS 19, 75; Hunt-Walker et al. (2012) PASP 124, 545.",
+  },
+  savedplot: {
+    en: "Each saved star placed by its effective temperature and its flare rate. Downward triangles are upper limits: stars where nothing was detected.\n\nThe expected trend is a steep rise towards cooler stars, because later M dwarfs stay magnetically active far longer than earlier ones. Read any trend here cautiously: this is whatever you happened to save, not a controlled sample, and the detection floor varies from star to star, so the faint ones are missing their small flares.",
+    fr: "Chaque étoile gardée, placée selon sa température effective et son taux de flares. Les triangles vers le bas sont des limites supérieures : les étoiles où rien n'a été détecté.\n\nLa tendance attendue est une montée rapide vers les étoiles froides, car les naines M tardives restent magnétiquement actives bien plus longtemps que les précoces. Lisez toute tendance ici avec prudence : c'est ce que vous avez gardé, pas un échantillon contrôlé, et le seuil de détection varie d'une étoile à l'autre, si bien que les plus faibles perdent leurs petits flares.",
+    cite: "Activity lifetimes: West et al. (2008) AJ 135, 785.",
+  },
+};
