@@ -150,6 +150,29 @@
    "bytes": 1684953
   },
   {
+   "slug": "gj-3323",
+   "name": "GJ 3323",
+   "aliases": [
+    "GJ 3323",
+    "GJ 3323 b",
+    "GJ 3323 c",
+    "TIC 43605290"
+   ],
+   "tic": 43605290,
+   "tmag": 9.4284,
+   "teff": 3159.0,
+   "n_flares": 14,
+   "exposure_days": 47.9047,
+   "rate_per_day": 0.29225,
+   "n_planets": 2,
+   "sectors": [
+    5,
+    32
+   ],
+   "min_amplitude": 0.01048455,
+   "bytes": 249957
+  },
+  {
    "slug": "gj-3929",
    "name": "GJ 3929",
    "aliases": [
