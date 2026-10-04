@@ -8,6 +8,7 @@
  */
 import { UI, HELP } from './i18n.js';
 import { METHODS } from './methods.js';
+import { aliasesOf, resolveStar } from './resolve.js';
 import {
   brightestPerCycle, exposureCdf, groupEvents, kuiperTest, phaseExposure,
   phaseOf, poissonPhaseSearch, rateInterval,
@@ -166,10 +167,137 @@ document.addEventListener('click', (e) => {
   if (!e.target.closest('.suggest')) $('menu').classList.remove('on');
 });
 $('go').onclick = () => {
-  const hits = search($('q').value);
+  const typed = $('q').value.trim();
+  const hits = search(typed);
   if (hits.length) { $('menu').classList.remove('on'); loadStar(hits[0].slug); }
-  else $('msg').innerHTML = `<div class="err">${t('not_found')}</div>`;
+  else if (typed) handleMiss(typed);
 };
+
+/* A name the catalogue does not have.
+ *
+ * Two things can be true: the star may be in the catalogue under a different
+ * name, or it may not be here at all. SIMBAD settles both, because its
+ * identifier table is what knows that GJ 1, HD 225213 and TIC 120461526 are
+ * one star. So: resolve, re-search on every alias, and only if that still
+ * misses, report what the star is and how to add it.
+ */
+async function handleMiss(typed) {
+  $('menu').classList.remove('on');
+  $('msg').innerHTML =
+    `<p class="hint"><span class="spinner"></span>${t('resolving')}</p>`;
+
+  let info = null;
+  try {
+    info = await resolveStar(typed);
+  } catch (err) {
+    $('msg').innerHTML = `<div class="err">${t('not_found')} ` +
+      `${lang === 'fr' ? 'SIMBAD injoignable' : 'SIMBAD unreachable'}: ` +
+      `${err.message}</div>`;
+    return;
+  }
+
+  if (!info.found) {
+    $('msg').innerHTML = `<div class="err">${lang === 'fr'
+      ? `Ni le catalogue ni SIMBAD ne connaissent « ${escapeHtml(typed)} ».`
+      : `Neither the catalogue nor SIMBAD knows "${escapeHtml(typed)}".`}</div>`;
+    return;
+  }
+
+  // The same star under another name?
+  const aliases = await aliasesOf(info.mainId);
+  for (const alias of [info.mainId, ...aliases]) {
+    const hit = search(alias);
+    if (hit.length && hit[0].name.toLowerCase() === alias.toLowerCase().trim()) {
+      $('msg').innerHTML = '';
+      $('q').value = hit[0].name;
+      loadStar(hit[0].slug);
+      return;
+    }
+  }
+  // Or matched by TIC, which the index carries for every star.
+  const ticAlias = aliases.find((a) => /^TIC\s*\d+$/i.test(a));
+  if (ticAlias) {
+    const tic = Number(ticAlias.replace(/[^0-9]/g, ''));
+    const byTic = index.stars.find((x) => x.tic === tic);
+    if (byTic) {
+      $('msg').innerHTML = `<p class="hint">${lang === 'fr'
+        ? `« ${escapeHtml(typed)} » est ${escapeHtml(byTic.name)} au catalogue.`
+        : `"${escapeHtml(typed)}" is ${escapeHtml(byTic.name)} in the catalogue.`}</p>`;
+      $('q').value = byTic.name;
+      loadStar(byTic.slug);
+      return;
+    }
+  }
+
+  showUncatalogued(typed, info);
+}
+
+const escapeHtml = (x) => String(x).replace(/[&<>"']/g, (c) =>
+  ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+/* What SIMBAD knows, why the page cannot go further, and the command that
+ * would add the star. */
+function showUncatalogued(typed, info) {
+  ['overview', 'seriescard', 'ratecard', 'periodcard', 'phasecard', 'cdfcard',
+   'synccard', 'flarecard'].forEach((id) => { $(id).hidden = true; });
+
+  const bits = [];
+  if (info.spType) bits.push(info.spType);
+  if (info.objType) bits.push(info.objType);
+  if (Number.isFinite(info.distancePc)) bits.push(`${info.distancePc.toFixed(2)} pc`);
+  if (Number.isFinite(info.vmag)) bits.push(`V = ${info.vmag.toFixed(2)}`);
+  if (Number.isFinite(info.jmag)) bits.push(`J = ${info.jmag.toFixed(2)}`);
+  const coords = `${info.ra.toFixed(5)}, ${info.dec.toFixed(5)}`;
+  const cmd = `python web/precompute.py --stars "${info.mainId}"`;
+  const simbadUrl = 'https://simbad.cds.unistra.fr/simbad/sim-id?Ident=' +
+    encodeURIComponent(info.mainId);
+
+  const en = `
+    <div class="verdict">
+      <p><b>${escapeHtml(info.mainId)}</b> is a real star, and SIMBAD knows it
+      ${typed.toLowerCase() !== info.mainId.toLowerCase()
+        ? `(you typed <b>${escapeHtml(typed)}</b>)` : ''}:
+      ${escapeHtml(bits.join(' &middot; ')) || 'no parameters listed'},
+      at ${coords}.</p>
+      <p>But <b>it is not in this catalogue</b>, so there is nothing to analyse
+      here. This page is static: your browser can ask SIMBAD who a star is, but
+      it cannot download a TESS light curve from MAST, and could not run the
+      detrending and the flare detection on it if it could. Those are done
+      offline, once per star, by the pipeline.</p>
+      <p>To add it, run this where
+      <a href="https://github.com/eartigau/syncflares">syncflares</a> lives:</p>
+      <pre class="codeblock">${escapeHtml(cmd)}</pre>
+      <p class="hint">Then copy <code>web/data/</code> into the site. The star
+      needs TESS data on MAST for this to produce anything;
+      <a href="${simbadUrl}" target="_blank" rel="noopener">its SIMBAD page</a>
+      lists what else is known about it.</p>
+    </div>`;
+
+  const fr = `
+    <div class="verdict">
+      <p><b>${escapeHtml(info.mainId)}</b> est une vraie étoile, connue de SIMBAD
+      ${typed.toLowerCase() !== info.mainId.toLowerCase()
+        ? `(vous avez tapé <b>${escapeHtml(typed)}</b>)` : ''} :
+      ${escapeHtml(bits.join(' &middot; ')) || 'aucun paramètre listé'},
+      en ${coords}.</p>
+      <p>Mais <b>elle n'est pas dans ce catalogue</b>, donc il n'y a rien à
+      analyser ici. Cette page est statique : votre navigateur peut demander à
+      SIMBAD ce qu'est une étoile, mais il ne peut pas télécharger une courbe de
+      lumière TESS sur MAST, et ne pourrait pas y faire tourner le
+      détendancement ni la détection de flares s'il le pouvait. Cela se fait
+      hors ligne, une fois par étoile, par le pipeline.</p>
+      <p>Pour l'ajouter, lancez ceci là où se trouve
+      <a href="https://github.com/eartigau/syncflares">syncflares</a> :</p>
+      <pre class="codeblock">${escapeHtml(cmd)}</pre>
+      <p class="hint">Puis copiez <code>web/data/</code> vers le site. Il faut
+      que TESS ait observé l'étoile pour que cela donne quelque chose ;
+      <a href="${simbadUrl}" target="_blank" rel="noopener">sa page SIMBAD</a>
+      liste ce que l'on sait d'elle par ailleurs.</p>
+    </div>`;
+
+  $('msg').innerHTML = lang === 'fr' ? fr : en;
+  $('msg').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
 $('rand').onclick = () => {
   const s = index.stars[Math.floor(Math.random() * index.stars.length)];
   $('q').value = s.name;

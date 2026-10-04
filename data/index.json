@@ -74,6 +74,31 @@
    "bytes": 990412
   },
   {
+   "slug": "gj-1",
+   "name": "GJ 1",
+   "aliases": [
+    "GJ 1",
+    "TIC 120461526"
+   ],
+   "tic": 120461526,
+   "tmag": 6.673,
+   "teff": null,
+   "n_flares": 0,
+   "exposure_days": 130.2345,
+   "rate_per_day": 0.0,
+   "n_planets": 0,
+   "sectors": [
+    2,
+    29,
+    69,
+    96,
+    103,
+    106
+   ],
+   "min_amplitude": 0.00131627,
+   "bytes": 1001049
+  },
+  {
    "slug": "gj-1151",
    "name": "GJ 1151",
    "aliases": [

@@ -15,6 +15,22 @@ const EN = `
 <p>Stellar and planetary parameters come from the <b>NASA Exoplanet Archive</b>'s composite table (<code>pscomppars</code>), which carries one best published solution per planet.</p>
 <p><b>A trap worth naming.</b> QLP light curves are not SPOC light curves. They carry no <code>PDCSAP_FLUX</code>, and they renamed their own detrended column between versions: <code>KSPSAP_FLUX</code> in v01, <code>DET_FLUX</code> in v02, with both appearing for the same star. Worse, <code>lightkurve</code>'s <code>default</code> quality bitmask is tuned to SPOC's flags and lets QLP junk through. On TOI-7149 (T = 14.8) that combination left cadences at 524 times the median flux and produced 49 "flares" with a median amplitude of 79% and a maximum of 7451%. The flux column and the quality mask are therefore chosen per file from the product's author, and QLP uses the <code>hard</code> mask.</p>
 
+<h3>1b. A star the catalogue does not have</h3>
+<p>Type any name and the page will try. If the catalogue has no match it asks
+<b>SIMBAD</b>, which settles two different questions. First, whether the star is
+here under another name: SIMBAD's identifier table knows that GJ 1,
+HD 225213 and TIC 120461526 are one object, so a name that looks like a miss
+often is not. Second, if it really is absent, what the star is, which the page
+then shows alongside the command that would add it.</p>
+<p><b>Only SIMBAD, and that is not an oversight.</b> Of the three archives this
+tool depends on, SIMBAD is the only one that answers a cross-origin request
+with an <code>Access-Control-Allow-Origin</code> header. The NASA Exoplanet
+Archive answers with the data and no such header, which a browser then
+discards, so the planet list cannot be fetched here. MAST is further out of
+reach still: a TESS light curve is tens of megabytes of FITS per sector, and
+the detrending and flare detection behind every number on this page are not
+things a browser should be asked to do. They run offline, once per star.</p>
+
 <h3>2. Detrending</h3>
 <p>Each sector's flux is divided by a running median over a <b>3-hour window</b>, then normalised so the quiescent level is 1.</p>
 <p>A median, not a mean, and the distinction is the whole point: a median is unmoved by a feature occupying less than half its window, so a flare lasting minutes passes through a 3-hour filter untouched, while the star's rotation and the instrument's drifts do not. A boxcar mean would absorb a fraction of every flare equal to the flare's duration over the window.</p>
@@ -107,6 +123,25 @@ const FR = `
 <p>Les courbes de lumière viennent de TESS, récupérées sur <b>MAST</b> via <code>lightkurve</code>, un produit par secteur, en préférant la cadence la plus rapide disponible (20 s plutôt que 120 s plutôt que 200 s FFI). Les pipelines sont préférés dans l'ordre SPOC, TESS-SPOC, QLP.</p>
 <p>Les paramètres stellaires et planétaires viennent de la table composite de la <b>NASA Exoplanet Archive</b> (<code>pscomppars</code>), qui porte une meilleure solution publiée par planète.</p>
 <p><b>Un piège qui mérite d'être nommé.</b> Les courbes QLP ne sont pas des courbes SPOC. Elles n'ont pas de <code>PDCSAP_FLUX</code>, et QLP a renommé sa propre colonne détendancée entre versions : <code>KSPSAP_FLUX</code> en v01, <code>DET_FLUX</code> en v02, les deux pouvant coexister pour une même étoile. Pire, le masque qualité <code>default</code> de <code>lightkurve</code> est réglé pour les drapeaux de SPOC et laisse passer les rebuts de QLP. Sur TOI-7149 (T = 14,8) cette combinaison laissait des cadences à 524 fois le flux médian et produisait 49 « flares » d'amplitude médiane 79 % et de maximum 7451 %. La colonne de flux et le masque qualité sont donc choisis par fichier selon l'auteur du produit, et QLP utilise le masque <code>hard</code>.</p>
+
+<h3>1b. Une étoile que le catalogue n'a pas</h3>
+<p>Tapez n'importe quel nom, la page essaiera. Si le catalogue n'a pas de
+correspondance, elle interroge <b>SIMBAD</b>, ce qui tranche deux questions
+distinctes. D'abord, si l'étoile est ici sous un autre nom : la table
+d'identifiants de SIMBAD sait que GJ 1, HD 225213 et TIC 120461526 sont un
+seul objet, donc un nom qui semble absent ne l'est souvent pas. Ensuite, si
+elle est vraiment absente, ce qu'est cette étoile, que la page affiche alors
+avec la commande qui l'ajouterait.</p>
+<p><b>SIMBAD seulement, et ce n'est pas un oubli.</b> Des trois archives dont
+cet outil dépend, SIMBAD est la seule qui réponde à une requête d'origine
+croisée avec un en-tête <code>Access-Control-Allow-Origin</code>. La NASA
+Exoplanet Archive répond avec les données et sans cet en-tête, qu'un
+navigateur jette alors, si bien que la liste des planètes ne peut pas être
+récupérée ici. MAST est encore plus hors de portée : une courbe de lumière
+TESS fait des dizaines de mégaoctets de FITS par secteur, et le
+détendancement et la détection de flares derrière chaque nombre de cette page
+ne sont pas des choses à demander à un navigateur. Ils tournent hors ligne,
+une fois par étoile.</p>
 
 <h3>2. Détendancement</h3>
 <p>Le flux de chaque secteur est divisé par une médiane glissante sur une <b>fenêtre de 3 heures</b>, puis normalisé pour que le niveau au repos vaille 1.</p>

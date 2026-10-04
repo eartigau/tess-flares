@@ -120,6 +120,14 @@ tr.sig td { color: #ffc27a; }
 .verdict b { color: var(--accent); }
 .verdict.yes b { color: #ffc27a; }
 
+/* the command that adds a star, shown when one is not in the catalogue */
+.codeblock { margin: 10px 0; padding: 11px 13px; border-radius: 9px;
+  overflow-x: auto; color: #d8e6f8; background: rgba(4, 8, 16, 0.9);
+  border: 1px solid var(--line);
+  font: 400 0.84rem/1.4 "IBM Plex Mono", monospace; }
+.verdict p { margin: 0 0 9px; }
+.verdict p:last-child { margin-bottom: 0; }
+
 .pill { display: inline-block; padding: 2px 9px; margin: 0 4px 4px 0;
   border-radius: 20px; font-size: 0.78rem; background: rgba(98, 194, 255, 0.14);
   border: 1px solid rgba(98, 194, 255, 0.3); color: var(--accent); }
