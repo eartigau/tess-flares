@@ -120,6 +120,42 @@ tr.sig td { color: #ffc27a; }
 .verdict b { color: var(--accent); }
 .verdict.yes b { color: #ffc27a; }
 
+/* ── Waiting for a star to be computed ──────────────────────────────── */
+/* An hourglass, not a spinner: the wait is minutes, dominated by the MAST
+   download, and a spinner reads as "about to finish". */
+.sablier { display: inline-block; font-size: 1.05rem; line-height: 1;
+  animation: flip 2.4s ease-in-out infinite; vertical-align: -2px;
+  margin-right: 7px; }
+@keyframes flip {
+  0%, 42% { transform: rotate(0deg); }
+  50%, 92% { transform: rotate(180deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.progress { margin: 14px 0 6px; }
+.progress .bar { position: relative; height: 8px; border-radius: 6px;
+  overflow: hidden; background: rgba(4, 10, 20, 0.7);
+  border: 1px solid var(--line); }
+.progress .fill { position: absolute; left: 0; top: 0; bottom: 0;
+  border-radius: 6px; background: linear-gradient(90deg, #3aa0e0, var(--accent));
+  transition: width 0.45s ease; }
+/* While queued the width is unknown, so the bar sweeps instead of lying
+   about a percentage. */
+.progress .fill.indet { width: 35% !important; animation: sweep 1.7s ease-in-out infinite; }
+@keyframes sweep { 0% { left: -35%; } 100% { left: 100%; } }
+
+.progress .steps { display: flex; gap: 4px; margin-top: 9px; flex-wrap: wrap; }
+.progress .steps span { flex: 1; min-width: 72px; padding: 5px 7px;
+  border-radius: 7px; font-size: 0.72rem; text-align: center;
+  color: var(--muted); background: rgba(4, 10, 20, 0.5);
+  border: 1px solid var(--line); }
+.progress .steps span.on { color: var(--text); background: rgba(98, 194, 255, 0.16);
+  border-color: rgba(98, 194, 255, 0.45); }
+.progress .steps span.past { color: #8fd6a8; border-color: rgba(120, 220, 160, 0.3); }
+.progress .meta { display: flex; justify-content: space-between;
+  margin-top: 8px; font-size: 0.82rem; color: var(--muted); }
+.progress .meta b { color: var(--text); font-weight: 500; }
+
 /* the command that adds a star, shown when one is not in the catalogue */
 .codeblock { margin: 10px 0; padding: 11px 13px; border-radius: 9px;
   overflow-x: auto; color: #d8e6f8; background: rgba(4, 8, 16, 0.9);

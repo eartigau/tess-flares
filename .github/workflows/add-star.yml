@@ -1,0 +1,178 @@
+# Add a star to the catalogue, on request from the website.
+#
+# The site is static, so it cannot compute anything: a browser cannot download
+# a TESS light curve from MAST, and could not run the detrending and flare
+# detection on it if it could. So the page files an issue, this answers it,
+# and Pages rebuilds with the star in place.
+#
+# The issue is a request, not code: only its title is read, only as a star
+# name, and it is validated before anything runs. Anyone can open an issue on
+# a public repository, which is the point and also the risk, so the job is
+# rate-limited by concurrency and the name is pattern-checked here AND in
+# request_star.py.
+
+name: add-star
+
+on:
+  issues:
+    types: [opened, reopened]
+  workflow_dispatch:
+    inputs:
+      star:
+        description: "Star name, as the archives spell it"
+        required: true
+
+permissions:
+  contents: write      # to commit the new star
+  issues: write        # to answer the request and close it
+
+concurrency:
+  # One at a time. Two runs would race on index.json, and MAST is shared with
+  # the whole world.
+  group: add-star
+  cancel-in-progress: false
+
+jobs:
+  add:
+    # Only issues that are requests. A plain bug report must not start a run.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      startsWith(github.event.issue.title, 'add-star:')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Read the request
+        id: req
+        env:
+          TITLE: ${{ github.event.issue.title }}
+          INPUT: ${{ github.event.inputs.star }}
+        run: |
+          set -euo pipefail
+          if [ -n "${INPUT:-}" ]; then
+            NAME="$INPUT"
+          else
+            NAME="${TITLE#add-star:}"
+          fi
+          # Trim, collapse whitespace.
+          NAME="$(printf '%s' "$NAME" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' -e 's/[[:space:]]\+/ /g')"
+          # A star name, and nothing that could be anything else. Checked here
+          # as well as in Python because this value reaches a shell.
+          if ! printf '%s' "$NAME" | grep -qE "^[A-Za-z0-9 ._+*'()/-]{2,60}$"; then
+            echo "refused: implausible name"
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+          echo "slug=$(printf '%s' "$NAME" | tr '[:upper:]' '[:lower:]' | sed -e 's/[^a-z0-9]\+/-/g' -e 's/^-//' -e 's/-$//')" >> "$GITHUB_OUTPUT"
+          echo "ok=true" >> "$GITHUB_OUTPUT"
+
+      - name: Refuse the request
+        if: steps.req.outputs.ok != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ "${{ github.event_name }}" = "issues" ]; then
+            gh issue close "${{ github.event.issue.number }}" --repo "$GITHUB_REPOSITORY" \
+              --comment "That title does not read as a star name. The site files these as \`add-star: <name>\`."
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.req.outputs.ok == 'true'
+        with:
+          token: ${{ github.token }}
+
+      # syncflares is private and holds the pipeline. A read-only deploy key
+      # scoped to that one repository, rather than a personal token that would
+      # reach every repository the owner has.
+      - name: Check out the pipeline
+        if: steps.req.outputs.ok == 'true'
+        uses: actions/checkout@v4
+        with:
+          repository: eartigau/syncflares
+          ssh-key: ${{ secrets.SYNCFLARES_KEY }}
+          path: _pipeline
+
+      - uses: actions/setup-python@v5
+        if: steps.req.outputs.ok == 'true'
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install
+        if: steps.req.outputs.ok == 'true'
+        run: pip install --quiet -r _pipeline/requirements.txt
+
+      - name: Say it has started
+        if: steps.req.outputs.ok == 'true'
+        run: |
+          mkdir -p data/status
+          cat > "data/status/${{ steps.req.outputs.slug }}.json" <<JSON
+          {"name": "${{ steps.req.outputs.name }}", "state": "running",
+           "step": "queued", "step_index": 0, "n_steps": 6,
+           "message": "Queued", "detail": "", "elapsed_s": 0,
+           "run_url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"}
+          JSON
+          git config user.name "tess-flares bot"
+          git config user.email "noreply@github.com"
+          git add data/status && git commit -q -m "status: ${{ steps.req.outputs.name }} queued" || true
+          git push -q || true
+
+      - name: Compute the star
+        if: steps.req.outputs.ok == 'true'
+        id: compute
+        run: |
+          cp -R data _pipeline/web/data_site
+          cd _pipeline
+          python web/request_star.py \
+            --name "${{ steps.req.outputs.name }}" \
+            --status "web/data_site/status/${{ steps.req.outputs.slug }}.json" \
+            --out web/data_site \
+            --cache-dir "$RUNNER_TEMP/cache"
+          cd ..
+          rm -rf data && cp -R _pipeline/web/data_site data
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          import json, glob, os
+          paths = glob.glob("data/status/*.json")
+          st = max(paths, key=os.path.getmtime)
+          d = json.load(open(st))
+          print(f"state={d['state']}")
+          print(f"slug={d.get('slug') or ''}")
+          msg = (d.get("message") or "").replace("\n", " ")
+          print(f"message={msg}")
+          s = d.get("summary") or {}
+          if s:
+              print(f"summary={s['n_flares']} flares over {s['exposure_days']} d "
+                    f"of exposure, sectors {s['sectors']}")
+          PY
+
+      - name: Commit the catalogue
+        if: steps.req.outputs.ok == 'true'
+        run: |
+          git add data
+          git diff --staged --quiet && echo "nothing changed" && exit 0
+          git commit -q -m "catalogue: ${{ steps.req.outputs.name }} (${{ steps.compute.outputs.state }})
+
+          Requested from the site. ${{ steps.compute.outputs.message }}"
+          # Another run may have landed while this one was downloading.
+          git pull --rebase -q || true
+          git push -q
+
+      - name: Answer the request
+        if: steps.req.outputs.ok == 'true' && github.event_name == 'issues'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          STATE="${{ steps.compute.outputs.state }}"
+          SLUG="${{ steps.compute.outputs.slug }}"
+          if [ "$STATE" = "done" ]; then
+            BODY="Added. ${{ steps.compute.outputs.summary }}
+
+          https://eartigau.github.io/tess-flares/?star=$SLUG
+
+          The page may take a few minutes to rebuild."
+          else
+            BODY="Not added: ${{ steps.compute.outputs.message }}"
+          fi
+          gh issue close "${{ github.event.issue.number }}" \
+            --repo "$GITHUB_REPOSITORY" --comment "$BODY"

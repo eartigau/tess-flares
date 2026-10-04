@@ -9,6 +9,7 @@
 import { UI, HELP } from './i18n.js';
 import { METHODS } from './methods.js';
 import { aliasesOf, resolveStar } from './resolve.js';
+import { SLOW_AFTER_MS, issueUrl, slugify, watchRequest } from './addstar.js';
 import {
   brightestPerCycle, exposureCdf, groupEvents, kuiperTest, phaseExposure,
   phaseOf, poissonPhaseSearch, rateInterval,
@@ -235,11 +236,19 @@ async function handleMiss(typed) {
 const escapeHtml = (x) => String(x).replace(/[&<>"']/g, (c) =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-/* What SIMBAD knows, why the page cannot go further, and the command that
- * would add the star. */
+/* What SIMBAD knows, and the offer to compute it.
+ *
+ * The page cannot compute anything itself, so it offers to ask: filing an
+ * issue starts a workflow that runs the real pipeline and commits the star
+ * back. The visitor is told how long that takes and is not made to wait for
+ * it; the page watches and says when the star has landed.
+ */
+let stopWatch = null;
+
 function showUncatalogued(typed, info) {
   ['overview', 'seriescard', 'ratecard', 'periodcard', 'phasecard', 'cdfcard',
    'synccard', 'flarecard'].forEach((id) => { $(id).hidden = true; });
+  if (stopWatch) { stopWatch(); stopWatch = null; }
 
   const bits = [];
   if (info.spType) bits.push(info.spType);
@@ -247,57 +256,143 @@ function showUncatalogued(typed, info) {
   if (Number.isFinite(info.distancePc)) bits.push(`${info.distancePc.toFixed(2)} pc`);
   if (Number.isFinite(info.vmag)) bits.push(`V = ${info.vmag.toFixed(2)}`);
   if (Number.isFinite(info.jmag)) bits.push(`J = ${info.jmag.toFixed(2)}`);
+  const name = info.mainId;
   const coords = `${info.ra.toFixed(5)}, ${info.dec.toFixed(5)}`;
-  const cmd = `python web/precompute.py --stars "${info.mainId}"`;
   const simbadUrl = 'https://simbad.cds.unistra.fr/simbad/sim-id?Ident=' +
-    encodeURIComponent(info.mainId);
+    encodeURIComponent(name);
+  const alsoTyped = typed.toLowerCase() !== name.toLowerCase()
+    ? (lang === 'fr' ? ` (vous avez tapé <b>${escapeHtml(typed)}</b>)`
+                     : ` (you typed <b>${escapeHtml(typed)}</b>)`) : '';
 
-  const en = `
+  const head = lang === 'fr'
+    ? `<p><b>${escapeHtml(name)}</b> est une vraie étoile, connue de SIMBAD${alsoTyped} :
+       ${bits.map(escapeHtml).join(' &middot; ') || 'aucun paramètre listé'}, en ${coords}.
+       <a href="${simbadUrl}" target="_blank" rel="noopener">Sa page SIMBAD</a>.</p>
+       <p>Elle n'est pas encore au catalogue. Je peux la faire calculer : la
+       demande lance le pipeline, qui télécharge la photométrie TESS, la
+       détendance et y cherche les flares, puis l'ajoute au catalogue.
+       <b>Comptez deux à dix minutes</b>, surtout du téléchargement.</p>`
+    : `<p><b>${escapeHtml(name)}</b> is a real star, and SIMBAD knows it${alsoTyped}:
+       ${bits.map(escapeHtml).join(' &middot; ') || 'no parameters listed'}, at ${coords}.
+       <a href="${simbadUrl}" target="_blank" rel="noopener">Its SIMBAD page</a>.</p>
+       <p>It is not in the catalogue yet. I can have it computed: the request
+       starts the pipeline, which downloads the TESS photometry, detrends it,
+       looks for flares and adds it to the catalogue.
+       <b>Expect two to ten minutes</b>, mostly downloading.</p>`;
+
+  const btn = lang === 'fr' ? 'Calculer cette étoile' : 'Compute this star';
+  const note = lang === 'fr'
+    ? `Ouvre une demande sur GitHub (il faut un compte). Le calcul tourne
+       là-bas ; cette page le suivra et vous dira quand l'étoile est prête.`
+    : `Opens a request on GitHub (an account is needed). The run happens
+       there; this page will follow it and say when the star is ready.`;
+
+  $('msg').innerHTML = `
     <div class="verdict">
-      <p><b>${escapeHtml(info.mainId)}</b> is a real star, and SIMBAD knows it
-      ${typed.toLowerCase() !== info.mainId.toLowerCase()
-        ? `(you typed <b>${escapeHtml(typed)}</b>)` : ''}:
-      ${escapeHtml(bits.join(' &middot; ')) || 'no parameters listed'},
-      at ${coords}.</p>
-      <p>But <b>it is not in this catalogue</b>, so there is nothing to analyse
-      here. This page is static: your browser can ask SIMBAD who a star is, but
-      it cannot download a TESS light curve from MAST, and could not run the
-      detrending and the flare detection on it if it could. Those are done
-      offline, once per star, by the pipeline.</p>
-      <p>To add it, run this where
-      <a href="https://github.com/eartigau/syncflares">syncflares</a> lives:</p>
-      <pre class="codeblock">${escapeHtml(cmd)}</pre>
-      <p class="hint">Then copy <code>web/data/</code> into the site. The star
-      needs TESS data on MAST for this to produce anything;
-      <a href="${simbadUrl}" target="_blank" rel="noopener">its SIMBAD page</a>
-      lists what else is known about it.</p>
+      ${head}
+      <div class="row" style="margin-top:12px">
+        <button id="askstar" class="go" type="button">${btn}</button>
+        <span class="hint" style="flex:1;min-width:220px">${note}</span>
+      </div>
+      <div id="watch"></div>
     </div>`;
 
-  const fr = `
-    <div class="verdict">
-      <p><b>${escapeHtml(info.mainId)}</b> est une vraie étoile, connue de SIMBAD
-      ${typed.toLowerCase() !== info.mainId.toLowerCase()
-        ? `(vous avez tapé <b>${escapeHtml(typed)}</b>)` : ''} :
-      ${escapeHtml(bits.join(' &middot; ')) || 'aucun paramètre listé'},
-      en ${coords}.</p>
-      <p>Mais <b>elle n'est pas dans ce catalogue</b>, donc il n'y a rien à
-      analyser ici. Cette page est statique : votre navigateur peut demander à
-      SIMBAD ce qu'est une étoile, mais il ne peut pas télécharger une courbe de
-      lumière TESS sur MAST, et ne pourrait pas y faire tourner le
-      détendancement ni la détection de flares s'il le pouvait. Cela se fait
-      hors ligne, une fois par étoile, par le pipeline.</p>
-      <p>Pour l'ajouter, lancez ceci là où se trouve
-      <a href="https://github.com/eartigau/syncflares">syncflares</a> :</p>
-      <pre class="codeblock">${escapeHtml(cmd)}</pre>
-      <p class="hint">Puis copiez <code>web/data/</code> vers le site. Il faut
-      que TESS ait observé l'étoile pour que cela donne quelque chose ;
-      <a href="${simbadUrl}" target="_blank" rel="noopener">sa page SIMBAD</a>
-      liste ce que l'on sait d'elle par ailleurs.</p>
-    </div>`;
+  $('askstar').onclick = () => {
+    const slug = slugify(name);
+    window.open(issueUrl(name), '_blank', 'noopener');
+    $('askstar').disabled = true;
+    $('askstar').textContent = lang === 'fr' ? 'Demande ouverte' : 'Request opened';
+    startWatching(name, slug);
+  };
 
-  $('msg').innerHTML = lang === 'fr' ? fr : en;
-  $('msg').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  // A request may already be running from an earlier visit.
+  startWatching(name, slugify(name), { quiet: true });
 }
+
+/* Follow a request and draw the bar. */
+function startWatching(name, slug, { quiet = false } = {}) {
+  if (stopWatch) stopWatch();
+  const box = $('watch');
+  if (!box) return;
+  let sawAnything = false;
+
+  stopWatch = watchRequest(slug, (st) => {
+    if (st.state === 'waiting' && !sawAnything) {
+      // Nothing filed yet: say nothing unless the visitor just asked.
+      if (quiet) return;
+      box.innerHTML = renderProgress({
+        state: 'waiting', step_index: 0, n_steps: 6,
+        message: lang === 'fr' ? 'En attente de la prise en charge'
+                               : 'Waiting for the run to start',
+      }, st.elapsedMs);
+      return;
+    }
+    sawAnything = true;
+    if (st.state === 'landed') {
+      box.innerHTML = `<p class="hint">${lang === 'fr'
+        ? `<b>${escapeHtml(name)}</b> est au catalogue. Chargement...`
+        : `<b>${escapeHtml(name)}</b> is in the catalogue. Loading...`}</p>`;
+      loadIndex().then(() => { $('q').value = name; loadStar(slug); });
+      return;
+    }
+    box.innerHTML = renderProgress(st, st.elapsedMs);
+  });
+}
+
+function renderProgress(st, elapsedMs) {
+  const secs = Math.round((elapsedMs ?? (st.elapsed_s || 0) * 1000) / 1000);
+  const mm = `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`;
+  const slow = (elapsedMs ?? 0) > SLOW_AFTER_MS;
+
+  if (st.state === 'refused') {
+    return `<div class="err" style="margin-top:12px">
+      <b>${lang === 'fr' ? 'Pas ajoutée' : 'Not added'}:</b>
+      ${escapeHtml(st.message || '')}
+      ${st.detail ? `<br><span class="hint">${escapeHtml(st.detail)}</span>` : ''}
+    </div>`;
+  }
+  if (st.state === 'failed' || st.state === 'timeout') {
+    const msg = st.state === 'timeout'
+      ? (lang === 'fr'
+         ? 'Toujours rien après vingt minutes. La demande est peut-être en file ; revenez plus tard.'
+         : 'Still nothing after twenty minutes. The request may be queued; come back later.')
+      : escapeHtml(st.error || st.message || '');
+    return `<div class="err" style="margin-top:12px">${msg}</div>`;
+  }
+
+  const steps = st.steps || [];
+  const n = st.n_steps || steps.length || 6;
+  const i = Math.min(st.step_index ?? 0, n);
+  const pct = n ? Math.round(100 * i / n) : 0;
+  const indet = st.state === 'waiting' || st.step === 'queued';
+
+  const chips = steps.length
+    ? `<div class="steps">${steps.map((x, k) =>
+        `<span class="${k < i ? 'past' : k === i ? 'on' : ''}">${escapeHtml(
+          lang === 'fr' ? (STEP_FR[x.key] || x.label) : x.label)}</span>`).join('')}</div>`
+    : '';
+
+  return `<div class="progress">
+    <div class="bar"><div class="fill${indet ? ' indet' : ''}"
+      style="width:${pct}%"></div></div>
+    ${chips}
+    <div class="meta">
+      <span>${slow ? '<span class="sablier">⏳</span>' : ''}<b>${escapeHtml(st.message || '')}</b>
+        ${st.detail ? ` &middot; ${escapeHtml(st.detail)}` : ''}</span>
+      <span>${mm}${st.run_url
+        ? ` &middot; <a href="${st.run_url}" target="_blank" rel="noopener">${
+            lang === 'fr' ? 'journal' : 'log'}</a>` : ''}</span>
+    </div>
+  </div>`;
+}
+
+const STEP_FR = {
+  resolve: 'Résolution du nom', search: 'Recherche MAST',
+  download: 'Téléchargement', detrend: 'Détendancement',
+  detect: 'Détection des flares', write: 'Écriture',
+};
+
+
 $('rand').onclick = () => {
   const s = index.stars[Math.floor(Math.random() * index.stars.length)];
   $('q').value = s.name;
