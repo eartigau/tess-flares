@@ -239,22 +239,42 @@ export async function fetchSectors(chosen, onProgress = () => {}) {
 export async function computeStar(tic, {
   maxSectors = DEFAULT_MAX_SECTORS, onProgress = () => {},
 } = {}) {
-  const py = await loadPyodide(onProgress);
-
+  // Ask MAST FIRST, load Pyodide second. The search costs a second and
+  // settles whether there is anything to do at all; loading Pyodide costs
+  // 30 MB and five seconds. Doing it the other way round makes a visitor pay
+  // for a runtime only to be told the star has no data, which is what
+  // happened on GJ 1214.
   onProgress({ step: 'search', detail: `TIC ${tic}` });
   const obs = await findProducts(tic);
   if (!obs.length) {
-    return { error: 'no-data',
-             message: `MAST has no TESS timeseries for TIC ${tic}.` };
+    // "No timeseries for TIC N" reads like the TIC was wrong, which it is
+    // not: the TIC comes from SIMBAD and names the star correctly. What is
+    // absent is the DATA. GJ 1214 is the case that showed this up, a
+    // well-studied planet host with no TESS light curve on MAST at all,
+    // checked three ways: by TIC, by name through lightkurve, and by
+    // position. The message has to say which of the two is missing.
+    return { error: 'no-data', tic,
+             message: 'MAST holds no TESS light curve for this star.',
+             detail: 'The TIC is right; the data do not exist. TESS may have ' +
+                     'observed it only in the full-frame images with no ' +
+                     'pipeline product, or not observed it at all.' };
   }
   const files = await findFiles(obs.map((o) => o.obsid).slice(0, 200));
   const chosen = chooseSectors(files, maxSectors);
   if (!chosen.length) {
-    return { error: 'no-data',
-             message: `MAST lists observations for TIC ${tic} but no light-curve file.` };
+    return { error: 'no-data', tic,
+             message: 'MAST lists TESS observations for this star but no ' +
+                      'light-curve file among them.',
+             detail: 'Target pixel files or full-frame images may exist; this ' +
+                     'tool needs a pipeline light curve.' };
   }
 
+  // Pyodide and the download at the same time: the runtime is 30 MB from a
+  // CDN and the sectors are 30 MB from S3, and waiting for one before
+  // starting the other doubles the wait for no reason.
+  const pyPromise = loadPyodide(onProgress);
   const blobs = await fetchSectors(chosen, onProgress);
+  const py = await pyPromise;
 
   onProgress({ step: 'compute', detail: `${chosen.length} sectors` });
   // The bytes cross into Python as a list of bytes objects; numpy arrays do

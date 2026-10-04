@@ -350,10 +350,12 @@ async function computeHere(name, info) {
   if (stopWatch) { stopWatch(); stopWatch = null; }
 
   const t0 = Date.now();
+  // The order the work actually happens in: MAST is asked first, so a star
+  // with no data costs a second rather than a 30 MB runtime download.
   const STEPS = [
-    { key: 'pyodide', label: lang === 'fr' ? 'Chargement de Python' : 'Loading Python' },
     { key: 'search', label: lang === 'fr' ? 'Recherche MAST' : 'Searching MAST' },
     { key: 'download', label: lang === 'fr' ? 'Téléchargement TESS' : 'Downloading TESS' },
+    { key: 'pyodide', label: lang === 'fr' ? 'Chargement de Python' : 'Loading Python' },
     { key: 'compute', label: lang === 'fr' ? 'Détection des flares' : 'Detecting flares' },
   ];
   const draw = (step, detail) => {
@@ -363,7 +365,7 @@ async function computeHere(name, info) {
       steps: STEPS, message: STEPS[i].label, detail: detail || '',
     }, Date.now() - t0);
   };
-  draw('pyodide', '');
+  draw('search', '');
 
   let out;
   try {
@@ -376,8 +378,30 @@ async function computeHere(name, info) {
     return;
   }
   if (out.error) {
-    box.innerHTML = `<div class="err">${escapeHtml(out.message || out.error)}</div>`;
-    if (btn) btn.disabled = false;
+    // A star with no TESS data is a fact about the sky, not a failure of the
+    // request, so it is not dressed as an error the visitor could retry.
+    const simbad = 'https://simbad.cds.unistra.fr/simbad/sim-id?Ident=' +
+      encodeURIComponent(name);
+    box.innerHTML = `<div class="verdict">
+      <p><b>${escapeHtml(out.message || out.error)}</b></p>
+      ${out.detail ? `<p class="hint">${escapeHtml(out.detail)}</p>` : ''}
+      <p class="hint">${lang === 'fr'
+        ? `TIC ${out.tic ?? '?'} identifie bien ${escapeHtml(name)} ; ce sont les
+           données qui manquent, pas l'étoile. Rien à calculer ici, ni par le
+           catalogue : le pipeline téléchargerait le même néant.`
+        : `TIC ${out.tic ?? '?'} does identify ${escapeHtml(name)}; it is the data
+           that are missing, not the star. There is nothing to compute, here or
+           through the catalogue: the pipeline would fetch the same nothing.`}
+        <a href="${simbad}" target="_blank" rel="noopener">SIMBAD</a></p>
+    </div>`;
+    // Offering "add to the catalogue" after this would be prescribing a run
+    // that can only fail, which the page already did once for this star.
+    const add = $('askstar');
+    if (add) {
+      add.disabled = true;
+      add.title = lang === 'fr' ? 'Aucune donnée TESS à traiter.'
+                                : 'No TESS data to process.';
+    }
     return;
   }
 
