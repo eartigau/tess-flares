@@ -22,7 +22,24 @@ here under another name: SIMBAD's identifier table knows that GJ 1,
 HD 225213 and TIC 120461526 are one object, so a name that looks like a miss
 often is not. Second, if it really is absent, what the star is, which the page
 then shows alongside the command that would add it.</p>
-<p>If the star really is absent, the page offers to <b>have it computed</b>.
+<p>If the star really is absent, the page offers <b>two ways to compute it</b>,
+which differ in what they cost and what they leave behind.</p>
+<p><b>Here and now</b>, in your own browser. Pyodide brings CPython, numpy,
+scipy and astropy into the page as WebAssembly, and MAST serves its light
+curves with CORS, so nothing needs a server: the page fetches the FITS files
+and runs the same detrending and flare detection on them. About 30 MB for
+Pyodide the first time, cached afterwards, then about 30 MB of TESS data and
+a couple of seconds of computation. Measured on AD Leo: 5.2 s to load
+Pyodide, 1.8 s to process 279,163 cadences, and a result identical to the
+catalogue entry cadence for cadence, with 468 of 483 detections inside 1.5
+minutes of a catalogued one and an amplitude ratio of 1.00057. Only the four
+most recent sectors are fetched, which is about 80% of the median star's
+exposure; the page says which ones it used and which it skipped. The result
+is yours alone and is not kept.</p>
+<p>No planets are listed for a star computed this way. SIMBAD gives the
+identity but not the orbits, and the NASA Exoplanet Archive cannot be reached
+from a browser, so you type the period yourself.</p>
+<p><b>Or add it to the catalogue</b>, for everyone.
 The request is filed as a GitHub issue, a workflow answers it by running the
 same pipeline the command line runs, and the catalogue is committed back;
 the page follows the run and loads the star when it lands. Two to ten
@@ -142,8 +159,25 @@ d'identifiants de SIMBAD sait que GJ 1, HD 225213 et TIC 120461526 sont un
 seul objet, donc un nom qui semble absent ne l'est souvent pas. Ensuite, si
 elle est vraiment absente, ce qu'est cette étoile, que la page affiche alors
 avec la commande qui l'ajouterait.</p>
-<p>Si l'étoile est vraiment absente, la page propose de <b>la faire
-calculer</b>. La demande est déposée comme une issue GitHub, un workflow y
+<p>Si l'étoile est vraiment absente, la page propose <b>deux façons de la
+calculer</b>, qui diffèrent par leur coût et par ce qu'elles laissent.</p>
+<p><b>Ici et maintenant</b>, dans votre navigateur. Pyodide amène CPython,
+numpy, scipy et astropy dans la page sous forme de WebAssembly, et MAST sert
+ses courbes de lumière en CORS : rien n'a besoin d'un serveur. La page
+récupère les fichiers FITS et y fait tourner le même détendancement et la
+même détection de flares. Environ 30 Mo pour Pyodide la première fois, mis en
+cache ensuite, puis environ 30 Mo de données TESS et quelques secondes de
+calcul. Mesuré sur AD Leo : 5,2 s pour charger Pyodide, 1,8 s pour traiter
+279 163 cadences, et un résultat identique à l'entrée du catalogue cadence
+par cadence, avec 468 détections sur 483 à moins de 1,5 minute d'une
+détection cataloguée et un rapport d'amplitude de 1,00057. Seuls les quatre
+secteurs les plus récents sont récupérés, soit environ 80 % de l'exposition
+de l'étoile médiane ; la page dit lesquels elle a pris et lesquels elle a
+laissés. Le résultat n'appartient qu'à vous et n'est pas conservé.</p>
+<p>Aucune planète n'est listée pour une étoile calculée ainsi. SIMBAD donne
+l'identité mais pas les orbites, et l'archive des exoplanètes n'est pas
+joignable depuis un navigateur : vous tapez la période vous-même.</p>
+<p><b>Ou l'ajouter au catalogue</b>, pour tout le monde. La demande est déposée comme une issue GitHub, un workflow y
 répond en lançant le même pipeline que la ligne de commande, et le catalogue
 est recommité ; la page suit le calcul et charge l'étoile quand elle arrive.
 Deux à dix minutes, dominées par le téléchargement depuis MAST, et la barre
