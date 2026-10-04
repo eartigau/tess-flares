@@ -50,6 +50,28 @@ from the catalogue's first and last contact times. Drawing is thinned to
 ~150,000 points since a browser is 1600 px wide, but in-flare cadences are
 never thinned and the factor is printed under the plot.
 
+## A star the catalogue does not have
+
+Type any name. If the catalogue has no match the page asks **SIMBAD**, which
+settles two things: whether the star is here under another identifier (GJ 1,
+HD 225213 and TIC 120461526 are one object, and the page re-searches on every
+alias), and if not, what the star actually is.
+
+It then offers to **compute it**. The request is filed as a GitHub issue, the
+[add-star workflow](.github/workflows/add-star.yml) runs the real pipeline on
+it, and the catalogue is committed back; the page follows the run with a bar
+over the six steps and loads the star when it lands. Two to ten minutes,
+dominated by the MAST download.
+
+A request can be refused, and the commonest reason is worth knowing: **the
+star may have no TESS light curve at all**. GJ 1214 is exactly that, a
+well-studied planet host with no pipeline product on MAST. The workflow checks
+before spending minutes on it.
+
+SIMBAD is the only one of the three archives that can be reached from a
+browser: it sends `Access-Control-Allow-Origin`, the NASA Exoplanet Archive
+does not, and MAST is a different matter entirely.
+
 ## What it computes
 
 - **Flare rate** per day of exposure, with a Poisson interval; a 95% upper
