@@ -13,6 +13,14 @@
  * workflow is kept for what it is good at: putting the answer in the
  * catalogue so the next visitor does not recompute it.
  *
+ * MAST's own download endpoint cannot be used from a page: it answers with a
+ * 307 that carries NO Access-Control-Allow-Origin header, so the browser
+ * rejects the redirect before reaching S3, which does send one. From a shell
+ * this is invisible, because curl does not enforce CORS, and the symptom in
+ * the page is a bare "Load failed". The public bucket URL is therefore built
+ * from the filename, whose layout is deterministic, with the endpoint kept as
+ * a fallback.
+ *
  * What it costs, measured rather than guessed:
  *   ~30 MB once for Pyodide (runtime 8.2, scipy 12.6, astropy 5.8, numpy 3.0),
  *   cached by the browser afterwards;
@@ -25,6 +33,27 @@ const PYODIDE_VERSION = 'v0.28.0';
 const PYODIDE_URL = `https://cdn.jsdelivr.net/pyodide/${PYODIDE_VERSION}/full/`;
 const MAST_API = 'https://mast.stsci.edu/api/v0/invoke';
 const MAST_FILE = 'https://mast.stsci.edu/api/v0.1/Download/file?uri=';
+const STPUBDATA = 'https://stpubdata.s3.us-east-1.amazonaws.com/tess/public/tid/';
+
+/* The public S3 URL of a TESS light curve, built from its filename.
+ *
+ * MAST's own download endpoint answers a browser with a 307 that carries NO
+ * CORS header, so the browser rejects the redirect before it ever reaches
+ * S3, which does send one. From a shell this is invisible, because curl does
+ * not enforce CORS; in a page it is a bare "Load failed". That is what broke
+ * HD 189733.
+ *
+ * The bucket layout is deterministic: tid/s<sector>/ then the 16-digit TIC in
+ * four-character groups, then the filename. Verified against the Location
+ * header MAST itself returns.
+ */
+export function publicUrl(filename) {
+  const m = /^tess\d+-s(\d{4})-(\d{16})-/.exec(filename);
+  if (!m) return null;
+  const [, sector, tid] = m;
+  const groups = [tid.slice(0, 4), tid.slice(4, 8), tid.slice(8, 12), tid.slice(12, 16)];
+  return `${STPUBDATA}s${sector}/${groups.join('/')}/${filename}`;
+}
 
 /* Four sectors is 29 MB and about 80% of the median star's exposure. The full
  * set reaches 270 MB for TOI-700, which is not something to ask of a visitor
@@ -144,7 +173,8 @@ export function chooseSectors(files, maxSectors = DEFAULT_MAX_SECTORS) {
     const cadence = /fast-lc\.fits$/i.test(fn) ? 20 : 120;
     const cur = bySector.get(sector);
     if (!cur || cadence < cur.cadence) {
-      bySector.set(sector, { sector, cadence, uri: f.dataURI || f.dataURL });
+      bySector.set(sector, { sector, cadence, filename: fn,
+                             uri: f.dataURI || f.dataURL });
     }
   }
   return [...bySector.values()]
@@ -163,7 +193,19 @@ export async function fetchSectors(chosen, onProgress = () => {}) {
   for (const c of chosen) {
     onProgress({ step: 'download', detail: `sector ${c.sector}`,
                  index: done, total: chosen.length });
-    const r = await fetch(MAST_FILE + encodeURIComponent(c.uri));
+
+    // The public bucket first, because MAST's redirect is not CORS-safe.
+    // The endpoint is kept as a fallback: if the bucket layout ever changes,
+    // a browser that follows the redirect successfully still works.
+    const direct = publicUrl(c.filename || '');
+    let r = null;
+    if (direct) {
+      try { r = await fetch(direct); } catch { r = null; }
+      if (r && !r.ok) r = null;
+    }
+    if (!r) {
+      r = await fetch(MAST_FILE + encodeURIComponent(c.uri));
+    }
     if (!r.ok) throw new Error(`sector ${c.sector}: HTTP ${r.status}`);
 
     const len = Number(r.headers.get('content-length')) || 0;
