@@ -92,6 +92,51 @@ export function loadPyodide(onProgress = () => {}) {
   return pyodidePromise;
 }
 
+/* The star's own parameters, from the TIC catalogue.
+ *
+ * The NASA Exoplanet Archive is unreachable from a page: it answers a
+ * cross-origin request with the data and no Access-Control-Allow-Origin, so
+ * the browser discards it. The TIC, served by the same MAST API as the
+ * observations, does send the header, and it carries radius, mass, effective
+ * temperature, surface gravity and distance. That is the whole stellar
+ * context the page shows, which was reading "— R☉, — M☉, — K" for every star
+ * computed in the browser.
+ *
+ * It does NOT carry planets. Those live only in the exoplanet archive, so a
+ * browser-computed star has no planet list and no period to offer, and the
+ * page says so rather than implying the star has none.
+ */
+export async function ticParameters(tic) {
+  const request = {
+    service: 'Mast.Catalogs.Filtered.Tic',
+    format: 'json',
+    params: {
+      columns: 'ID,Tmag,Teff,rad,mass,logg,plx,d,ra,dec',
+      filters: [{ paramName: 'ID', values: [String(tic)] }],
+    },
+  };
+  try {
+    const r = await fetch(MAST_API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: 'request=' + encodeURIComponent(JSON.stringify(request)),
+    });
+    if (!r.ok) return null;
+    const out = await r.json();
+    const row = (out.data || [])[0];
+    if (!row) return null;
+    const num = (x) => (x === null || x === undefined || !isFinite(Number(x)))
+      ? null : Number(x);
+    return {
+      tmag: num(row.Tmag), st_teff: num(row.Teff), st_rad: num(row.rad),
+      st_mass: num(row.mass), st_logg: num(row.logg),
+      distance_pc: num(row.d), ra: num(row.ra), dec: num(row.dec),
+    };
+  } catch {
+    return null;   // a missing star card is not worth failing the run over
+  }
+}
+
 /* The products MAST holds for a TIC.
  *
  * Caom.Filtered.Product rather than the portal: it is the endpoint that
@@ -269,10 +314,11 @@ export async function computeStar(tic, {
                      'tool needs a pipeline light curve.' };
   }
 
-  // Pyodide and the download at the same time: the runtime is 30 MB from a
-  // CDN and the sectors are 30 MB from S3, and waiting for one before
-  // starting the other doubles the wait for no reason.
+  // Pyodide, the download and the star card at the same time: the runtime is
+  // 30 MB from a CDN and the sectors are 30 MB from S3, and waiting for one
+  // before starting the other doubles the wait for no reason.
   const pyPromise = loadPyodide(onProgress);
+  const ticPromise = ticParameters(tic);
   const blobs = await fetchSectors(chosen, onProgress);
   const py = await pyPromise;
 
@@ -291,5 +337,6 @@ pipeline.run([bytes(b.to_py()) if hasattr(b, "to_py") else bytes(b)
     .filter((x) => x !== null))].sort((a, b) => a - b);
   out.sectors_used = chosen.map((c) => c.sector);
   out.bytes_downloaded = blobs.reduce((a, b) => a + b.length, 0);
+  out.tic_parameters = await ticPromise;
   return out;
 }

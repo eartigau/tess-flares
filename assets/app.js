@@ -411,12 +411,18 @@ async function computeHere(name, info) {
   star = {
     schema: 2, name, slug: slugify(name), computed_here: true,
     generated: new Date().toISOString().slice(0, 10),
+    // The TIC catalogue fills the star card; SIMBAD's distance is kept when
+    // the TIC has none, since a parallax from either is the same parallax.
     star: {
-      tic: info.tic, ra: info.ra, dec: info.dec, tmag: null,
-      distance_pc: info.distancePc, st_rad: null, st_mass: null,
-      st_teff: null, st_logg: null, st_rotp: null,
+      tic: info.tic, ra: info.ra, dec: info.dec, st_rotp: null,
+      ...(out.tic_parameters || {}),
+      distance_pc: (out.tic_parameters && out.tic_parameters.distance_pc)
+        || info.distancePc || null,
     },
+    // Empty, and NOT because the star has none: planets live only in the
+    // NASA Exoplanet Archive, which a browser cannot reach.
     planets: [],
+    planets_unknown: true,
     tess: {
       sectors: out.sectors, author: 'SPOC',
       n_cadences: out.n_cadences, n_cadences_plotted: out.n_cadences,
@@ -465,13 +471,16 @@ function renderComputedHere(st, ms) {
     ? `<b>Calculé dans votre navigateur</b> en ${secs} s, ${mb} Mo téléchargés,
        secteurs ${st.tess.sectors.join(', ')}.${more}
        Ce résultat n'est pas conservé : rechargez la page et il disparaît.
-       Aucune planète n'est listée, car l'archive des exoplanètes n'est pas
-       joignable depuis un navigateur ; tapez une période pour replier.`
+       Les paramètres de l'étoile viennent du catalogue TIC. Ses planètes, si
+       elle en a, ne sont pas listées : seule l'archive des exoplanètes les
+       connaît et elle ne répond pas à un navigateur. Tapez une période pour
+       replier.`
     : `<b>Computed in your browser</b> in ${secs} s, ${mb} MB downloaded,
        sectors ${st.tess.sectors.join(', ')}.${more}
-       This result is not kept: reload and it is gone. No planets are listed,
-       because the exoplanet archive cannot be reached from a browser; type a
-       period to fold on.`;
+       This result is not kept: reload and it is gone. The stellar parameters
+       come from the TIC catalogue. Its planets, if it has any, are not listed:
+       only the exoplanet archive knows them and it does not answer a browser.
+       Type a period to fold on.`;
   return `<div class="verdict yes">${txt}</div>`;
 }
 
@@ -835,20 +844,49 @@ function drawOverview() {
   if (s.distance_pc) bits.push(`${fmt(s.distance_pc, 1)} pc`);
   $('staridents').textContent = bits.join(' · ');
 
+  const { usable, tooLong } = star.tess ? foldablePeriods() : { usable: [], tooLong: [] };
   const pl = star.planets.map((p) =>
-    `${p.name} (P = ${fmt(p.period_days, 4)} d${p.transiting ? ', transiting' : ''})`);
+    `${p.name} (P = ${p.period_days ? fmtPeriod(p.period_days) : '?'}` +
+    `${p.transiting ? ', transiting' : ''})`);
   $('starstats').innerHTML = [
     stat(lang === 'fr' ? 'Rayon' : 'Radius', `${fmt(s.st_rad, 3)} <small>R☉</small>`),
     stat(lang === 'fr' ? 'Masse' : 'Mass', `${fmt(s.st_mass, 3)} <small>M☉</small>`),
     stat('Teff', `${s.st_teff ? s.st_teff.toFixed(0) : '—'} <small>K</small>`),
     stat(lang === 'fr' ? 'Rotation' : 'Rotation',
          s.st_rotp ? `${fmt(s.st_rotp, 3)} <small>d</small>` : '—'),
+    // Two numbers, because they are two different things: how many planets
+    // the star has, and how many of their periods these data can fold on.
+    // HR 8799 has four planets and no foldable period, its orbits running
+    // from 57 to 465 years against TESS's 27-day sectors.
     stat(lang === 'fr' ? 'Planètes' : 'Planets',
-         `${star.planets.length}`, star.planets.length ? 'hi' : ''),
+         star.planets.length
+           ? `${star.planets.length}` +
+             (usable.length === star.planets.length
+               ? ''
+               : ` <small>${usable.length} ${lang === 'fr' ? 'repliable(s)'
+                                                           : 'foldable'}</small>`)
+           : (star.planets_unknown
+              ? `? <small>${lang === 'fr' ? 'archive injoignable'
+                                          : 'archive unreachable'}</small>`
+              : '0'),
+         usable.length ? 'hi' : (star.planets.length ? 'warn' : '')),
   ].join('');
   if (pl.length) {
     $('starstats').insertAdjacentHTML('afterend',
-      `<p class="hint" style="margin-top:10px">${pl.join(' · ')}</p>`);
+      `<p class="hint" style="margin-top:10px">${pl.join(' &middot; ')}</p>`);
+  } else if (star.planets_unknown) {
+    // Not "this star has no planets". HR 8799 has four, and a page that said
+    // otherwise would be stating something false about a famous system.
+    $('starstats').insertAdjacentHTML('afterend',
+      `<p class="hint" style="margin-top:10px">${lang === 'fr'
+        ? `Les planètes de cette étoile ne sont pas listées ici : seule la NASA
+           Exoplanet Archive les connaît, et elle ne répond pas aux requêtes
+           d'un navigateur (pas d'en-tête CORS). Cela ne veut pas dire qu'elle
+           n'en a pas. Tapez une période ci-dessous pour replier.`
+        : `This star's planets are not listed here: only the NASA Exoplanet
+           Archive knows them, and it does not answer a browser's request (no
+           CORS header). That does not mean it has none. Type a period below
+           to fold on.`}</p>`);
   }
 }
 
@@ -892,22 +930,77 @@ function drawRates() {
     `</p>`;
 }
 
-function drawPeriodPills() {
-  const out = [];
+/* Which periods can actually be folded on, and which cannot.
+ *
+ * A planet is not a period. HR 8799 has four, all imaged rather than
+ * transiting, with orbits from 57 to 465 years: TESS observes 27 days at a
+ * stretch, so not one of them can be folded on anything this tool holds.
+ * Offering them as buttons would invite a fold that is arithmetic without
+ * meaning, and showing "4 planets" beside nothing to click is worse than
+ * saying why.
+ *
+ * The cut is one full cycle of EXPOSURE. Below that the fold cannot even
+ * sample the whole phase and the exposure-weighted reference is built from
+ * arcs that never close, which is not a weak result but a meaningless one.
+ * Above it the statistics are honest about their own weakness: two cycles
+ * give a large p-value, and the page says so.
+ *
+ * Chosen from the catalogue rather than from taste. Its 38 planets span 0.1
+ * to hundreds of cycles of exposure; LHS 1140 b sits at 2.4 and is a real
+ * transiting planet whose flares the catalogue does detect, while GJ 1151 c
+ * sits at 0.1 and cannot be folded on anything. A stricter cut would have
+ * thrown away the first to exclude the second.
+ */
+function foldablePeriods() {
+  const baseline = star.tess.t_max - star.tess.t_min;
+  const exposure = star.tess.exposure_days;
+  const usable = [], tooLong = [];
   for (const p of star.planets) {
-    if (!p.period_days) continue;
-    out.push(`<button type="button" class="small" data-p="${p.period_days}" ` +
-      `data-t0="${p.epoch_bjd ?? star.tess.t_min}" data-src="${p.name}">` +
-      `${p.name} · ${fmt(p.period_days, 3)} d</button>`);
+    if (!p.period_days) { tooLong.push({ ...p, why: 'no period' }); continue; }
+    if (p.period_days > exposure) {
+      tooLong.push({ ...p, why: 'too long' });
+    } else {
+      usable.push(p);
+    }
   }
-  if (star.star.st_rotp) {
+  return { usable, tooLong, baseline, exposure };
+}
+
+function drawPeriodPills() {
+  const { usable, tooLong, exposure } = foldablePeriods();
+  const out = [];
+  for (const p of usable) {
+    out.push(`<button type="button" class="small" data-p="${p.period_days}" ` +
+      `data-t0="${p.epoch_bjd ?? star.tess.t_min}" data-src="${escapeHtml(p.name)}">` +
+      `${escapeHtml(p.name)} · ${fmt(p.period_days, 3)} d</button>`);
+  }
+  if (star.star.st_rotp && star.star.st_rotp <= exposure) {
     out.push(`<button type="button" class="small" data-p="${star.star.st_rotp}" ` +
       `data-t0="${star.tess.t_min}" data-src="rotation">` +
       `rotation · ${fmt(star.star.st_rotp, 3)} d</button>`);
   }
-  $('periodpills').innerHTML = out.join('') ||
-    `<span class="hint">${lang === 'fr'
-      ? 'Aucune période connue : tapez-en une.' : 'No known period: type one.'}</span>`;
+
+  let html = out.join('');
+  if (!out.length) {
+    html = `<span class="hint">${lang === 'fr'
+      ? 'Aucune période repliable : tapez-en une.'
+      : 'No foldable period: type one.'}</span>`;
+  }
+  // Name the planets that exist but cannot be folded, with the reason. They
+  // are real and the page should not pretend otherwise.
+  if (tooLong.length) {
+    const names = tooLong.map((p) => p.period_days
+      ? `${escapeHtml(p.name)} (${fmtPeriod(p.period_days)})`
+      : escapeHtml(p.name)).join(', ');
+    html += `<p class="hint" style="width:100%;margin:8px 0 0">${lang === 'fr'
+      ? `Hors de portée de ces données : ${names}. Une orbite plus longue que
+         les ${fmt(exposure, 1)} j d'exposition ne boucle même pas un cycle,
+         et un repliement n'y aurait aucun sens.`
+      : `Beyond the reach of these data: ${names}. An orbit longer than the
+         ${fmt(exposure, 1)} d of exposure does not complete one cycle, so a
+         fold on it would mean nothing.`}</p>`;
+  }
+  $('periodpills').innerHTML = html;
   $('periodpills').querySelectorAll('button').forEach((b) => {
     b.onclick = () => {
       fold = { period: +b.dataset.p, t0: +b.dataset.t0, source: b.dataset.src };
@@ -916,6 +1009,14 @@ function drawPeriodPills() {
       drawFold();
     };
   });
+}
+
+/* Days, years or hours, whichever reads. 170000 d is not a number anyone
+ * holds in their head; 465 yr is. */
+function fmtPeriod(d) {
+  if (d >= 700) return `${fmt(d / 365.25, d / 365.25 >= 100 ? 0 : 1)} yr`;
+  if (d < 1) return `${fmt(d * 24, 2)} h`;
+  return `${fmt(d, 3)} d`;
 }
 
 $('apply').onclick = () => {
