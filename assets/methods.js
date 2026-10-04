@@ -22,6 +22,16 @@ here under another name: SIMBAD's identifier table knows that GJ 1,
 HD 225213 and TIC 120461526 are one object, so a name that looks like a miss
 often is not. Second, if it really is absent, what the star is, which the page
 then shows alongside the command that would add it.</p>
+<p>If the star really is absent, the page offers to <b>have it computed</b>.
+The request is filed as a GitHub issue, a workflow answers it by running the
+same pipeline the command line runs, and the catalogue is committed back;
+the page follows the run and loads the star when it lands. Two to ten
+minutes, dominated by the download from MAST, and the bar names the step
+rather than spinning.</p>
+<p>A request can be refused, and the commonest reason is worth knowing:
+<b>the star may have no TESS light curve at all</b>. GJ 1214 is exactly that
+case, a well-studied planet host with no pipeline product on MAST. The
+workflow checks that before spending minutes on it and says so.</p>
 <p><b>Only SIMBAD, and that is not an oversight.</b> Of the three archives this
 tool depends on, SIMBAD is the only one that answers a cross-origin request
 with an <code>Access-Control-Allow-Origin</code> header. The NASA Exoplanet
@@ -132,6 +142,17 @@ d'identifiants de SIMBAD sait que GJ 1, HD 225213 et TIC 120461526 sont un
 seul objet, donc un nom qui semble absent ne l'est souvent pas. Ensuite, si
 elle est vraiment absente, ce qu'est cette étoile, que la page affiche alors
 avec la commande qui l'ajouterait.</p>
+<p>Si l'étoile est vraiment absente, la page propose de <b>la faire
+calculer</b>. La demande est déposée comme une issue GitHub, un workflow y
+répond en lançant le même pipeline que la ligne de commande, et le catalogue
+est recommité ; la page suit le calcul et charge l'étoile quand elle arrive.
+Deux à dix minutes, dominées par le téléchargement depuis MAST, et la barre
+nomme l'étape plutôt que de tourner dans le vide.</p>
+<p>Une demande peut être refusée, et la raison la plus fréquente mérite d'être
+connue : <b>l'étoile peut n'avoir aucune courbe de lumière TESS</b>. GJ 1214
+est précisément ce cas, un hôte de planète très étudié sans aucun produit de
+pipeline sur MAST. Le workflow le vérifie avant d'y passer des minutes et le
+dit.</p>
 <p><b>SIMBAD seulement, et ce n'est pas un oubli.</b> Des trois archives dont
 cet outil dépend, SIMBAD est la seule qui réponde à une requête d'origine
 croisée avec un en-tête <code>Access-Control-Allow-Origin</code>. La NASA
