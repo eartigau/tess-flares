@@ -58,6 +58,19 @@ function rowsOf(payload) {
   });
 }
 
+/* The TIC number, which is the only identifier MAST will answer to.
+ *
+ * SIMBAD carries it in its identifier table for most TESS targets, which
+ * saves a second round trip to the TIC catalogue; where it does not, the
+ * caller is told and the browser-side computation is not offered. */
+export function ticOf(aliases) {
+  for (const a of aliases || []) {
+    const m = /^TIC\s*(\d+)$/i.exec(String(a).trim());
+    if (m) return Number(m[1]);
+  }
+  return null;
+}
+
 export async function resolveStar(name, { timeoutMs = 12000 } = {}) {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), timeoutMs);

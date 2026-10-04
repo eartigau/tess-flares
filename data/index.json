@@ -10,18 +10,17 @@
    "tic": 95431305,
    "tmag": 7.036,
    "teff": null,
-   "n_flares": 574,
-   "exposure_days": 88.2742,
-   "rate_per_day": 6.50247,
+   "n_flares": 509,
+   "exposure_days": 64.6255,
+   "rate_per_day": 7.87615,
    "n_planets": 0,
    "sectors": [
     45,
-    46,
     48,
     72
    ],
-   "min_amplitude": 0.03331287,
-   "bytes": 881244
+   "min_amplitude": 0.0332515,
+   "bytes": 666031
   },
   {
    "slug": "au-mic",
@@ -195,30 +194,6 @@
    ],
    "min_amplitude": 0.00865211,
    "bytes": 168876
-  },
-  {
-   "slug": "gj-581",
-   "name": "GJ 581",
-   "aliases": [
-    "GJ 581",
-    "GJ 581 b",
-    "GJ 581 c",
-    "GJ 581 e",
-    "TIC 36853511"
-   ],
-   "tic": 36853511,
-   "tmag": 8.20238,
-   "teff": 3500.0,
-   "n_flares": 2,
-   "exposure_days": 27.8053,
-   "rate_per_day": 0.07193,
-   "n_planets": 3,
-   "sectors": [
-    51,
-    91
-   ],
-   "min_amplitude": 0.00287246,
-   "bytes": 247447
   },
   {
    "slug": "gj-674",

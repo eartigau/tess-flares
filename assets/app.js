@@ -8,8 +8,9 @@
  */
 import { UI, HELP } from './i18n.js';
 import { METHODS } from './methods.js';
-import { aliasesOf, resolveStar } from './resolve.js';
+import { aliasesOf, resolveStar, ticOf } from './resolve.js';
 import { SLOW_AFTER_MS, issueUrl, slugify, watchRequest } from './addstar.js';
+import { DEFAULT_MAX_SECTORS, computeStar } from './browser_pipeline.js';
 import {
   brightestPerCycle, exposureCdf, groupEvents, kuiperTest, phaseExposure,
   phaseOf, poissonPhaseSearch, rateInterval,
@@ -206,6 +207,9 @@ async function handleMiss(typed) {
 
   // The same star under another name?
   const aliases = await aliasesOf(info.mainId);
+  // MAST answers to a TIC and nothing else, so the in-browser computation is
+  // only offered when SIMBAD gives one.
+  info.tic = ticOf(aliases);
   for (const alias of [info.mainId, ...aliases]) {
     const hit = search(alias);
     if (hit.length && hit[0].name.toLowerCase() === alias.toLowerCase().trim()) {
@@ -280,23 +284,45 @@ function showUncatalogued(typed, info) {
        looks for flares and adds it to the catalogue.
        <b>Expect two to ten minutes</b>, mostly downloading.</p>`;
 
-  const btn = lang === 'fr' ? 'Calculer cette étoile' : 'Compute this star';
-  const note = lang === 'fr'
-    ? `Ouvre une demande sur GitHub (il faut un compte). Le calcul tourne
-       là-bas ; cette page le suivra et vous dira quand l'étoile est prête.`
-    : `Opens a request on GitHub (an account is needed). The run happens
-       there; this page will follow it and say when the star is ready.`;
+  const btnNow = lang === 'fr' ? 'Calculer ici, maintenant' : 'Compute it here, now';
+  const btnAdd = lang === 'fr' ? 'Ajouter au catalogue' : 'Add to the catalogue';
+  const noteNow = lang === 'fr'
+    ? `Dans votre navigateur, en quelques dizaines de secondes. Télécharge
+       Python (~30 Mo, une seule fois) puis ${DEFAULT_MAX_SECTORS} secteurs TESS
+       (~30 Mo). Le résultat est à vous seul et n'est pas conservé.`
+    : `In your browser, in under a minute. Downloads Python (~30 MB, once) and
+       ${DEFAULT_MAX_SECTORS} TESS sectors (~30 MB). The result is yours alone
+       and is not kept.`;
+  const noteAdd = lang === 'fr'
+    ? `Lance le pipeline complet sur GitHub, tous secteurs, et l'ajoute au
+       catalogue pour tout le monde. Deux à dix minutes, compte GitHub requis.`
+    : `Runs the full pipeline on GitHub, every sector, and adds it to the
+       catalogue for everyone. Two to ten minutes, a GitHub account is needed.`;
 
   $('msg').innerHTML = `
     <div class="verdict">
       ${head}
-      <div class="row" style="margin-top:12px">
-        <button id="askstar" class="go" type="button">${btn}</button>
-        <span class="hint" style="flex:1;min-width:220px">${note}</span>
+      <div class="row" style="margin-top:14px;align-items:flex-start">
+        <div style="flex:1;min-width:250px">
+          <button id="computehere" class="go" type="button">${btnNow}</button>
+          <p class="hint" style="margin:7px 0 0">${noteNow}</p>
+        </div>
+        <div style="flex:1;min-width:250px">
+          <button id="askstar" class="small" type="button">${btnAdd}</button>
+          <p class="hint" style="margin:7px 0 0">${noteAdd}</p>
+        </div>
       </div>
       <div id="watch"></div>
     </div>`;
 
+  if (info.tic) {
+    $('computehere').onclick = () => computeHere(name, info);
+  } else {
+    $('computehere').disabled = true;
+    $('computehere').title = lang === 'fr'
+      ? "SIMBAD ne donne pas de numéro TIC pour cette étoile, et MAST ne répond qu'à un TIC."
+      : 'SIMBAD gives no TIC for this star, and MAST answers only to a TIC.';
+  }
   $('askstar').onclick = () => {
     const slug = slugify(name);
     window.open(issueUrl(name), '_blank', 'noopener');
@@ -307,6 +333,122 @@ function showUncatalogued(typed, info) {
 
   // A request may already be running from an earlier visit.
   startWatching(name, slugify(name), { quiet: true });
+}
+
+/* Compute a star here, in this browser.
+ *
+ * The result is shaped exactly like a catalogue entry, so every panel on the
+ * page works on it unchanged: the fold, the Kuiper test, the Poisson search,
+ * the saved-stars tab. The only difference is that it is not kept, and the
+ * page says so, because a visitor who recomputes the same star twice should
+ * know why it took a minute the second time too.
+ */
+async function computeHere(name, info) {
+  const box = $('watch');
+  const btn = $('computehere');
+  if (btn) { btn.disabled = true; }
+  if (stopWatch) { stopWatch(); stopWatch = null; }
+
+  const t0 = Date.now();
+  const STEPS = [
+    { key: 'pyodide', label: lang === 'fr' ? 'Chargement de Python' : 'Loading Python' },
+    { key: 'search', label: lang === 'fr' ? 'Recherche MAST' : 'Searching MAST' },
+    { key: 'download', label: lang === 'fr' ? 'Téléchargement TESS' : 'Downloading TESS' },
+    { key: 'compute', label: lang === 'fr' ? 'Détection des flares' : 'Detecting flares' },
+  ];
+  const draw = (step, detail) => {
+    const i = Math.max(0, STEPS.findIndex((x) => x.key === step));
+    box.innerHTML = renderProgress({
+      state: 'running', step, step_index: i, n_steps: STEPS.length,
+      steps: STEPS, message: STEPS[i].label, detail: detail || '',
+    }, Date.now() - t0);
+  };
+  draw('pyodide', '');
+
+  let out;
+  try {
+    out = await computeStar(info.tic, {
+      onProgress: ({ step, detail }) => draw(step, detail),
+    });
+  } catch (err) {
+    box.innerHTML = `<div class="err">${escapeHtml(err.message)}</div>`;
+    if (btn) btn.disabled = false;
+    return;
+  }
+  if (out.error) {
+    box.innerHTML = `<div class="err">${escapeHtml(out.message || out.error)}</div>`;
+    if (btn) btn.disabled = false;
+    return;
+  }
+
+  // Shape it like a catalogue record. The series is held as plain arrays
+  // rather than the binary grid a precomputed star uses, so drawSeries is
+  // given blocks it can read the same way.
+  star = {
+    schema: 2, name, slug: slugify(name), computed_here: true,
+    generated: new Date().toISOString().slice(0, 10),
+    star: {
+      tic: info.tic, ra: info.ra, dec: info.dec, tmag: null,
+      distance_pc: info.distancePc, st_rad: null, st_mass: null,
+      st_teff: null, st_logg: null, st_rotp: null,
+    },
+    planets: [],
+    tess: {
+      sectors: out.sectors, author: 'SPOC',
+      n_cadences: out.n_cadences, n_cadences_plotted: out.n_cadences,
+      baseline_days: round6(out.t_max - out.t_min),
+      exposure_days: out.exposure_days,
+      t_min: out.t_min, t_max: out.t_max,
+      exptime_by_sector: {},
+    },
+    detection: {
+      whitening: 'running median, 3.0 h window',
+      sigma_threshold: 3.0, min_consecutive_points: 3, max_amplitude: 3.0,
+      noise_per_point: out.noise_per_point,
+      min_detectable_amplitude: out.min_detectable_amplitude,
+      n_masked_in_transit: 0,
+    },
+    flares: out.flares,
+    coverage: out.coverage,
+    series: null,
+    inline_series: out.flux,
+    sectors_available: out.sectors_available,
+    bytes_downloaded: out.bytes_downloaded,
+  };
+
+  // No planets are known here: the Exoplanet Archive cannot be reached from a
+  // browser (no CORS), so there is no period to offer and the visitor types
+  // one. SIMBAD gave the identity; it does not give orbits.
+  fold = null;
+  $('q').value = name;
+  box.innerHTML = '';
+  $('msg').innerHTML = renderComputedHere(star, Date.now() - t0);
+  render();
+}
+
+const round6 = (x) => Math.round(x * 1e6) / 1e6;
+
+function renderComputedHere(st, ms) {
+  const secs = (ms / 1000).toFixed(0);
+  const mb = (st.bytes_downloaded / 1048576).toFixed(0);
+  const missing = (st.sectors_available || []).filter((s) => !st.tess.sectors.includes(s));
+  const more = missing.length
+    ? (lang === 'fr'
+       ? ` ${missing.length} autre(s) secteur(s) existent (${missing.join(', ')}) et n'ont pas été téléchargés.`
+       : ` ${missing.length} further sector(s) exist (${missing.join(', ')}) and were not downloaded.`)
+    : '';
+  const txt = lang === 'fr'
+    ? `<b>Calculé dans votre navigateur</b> en ${secs} s, ${mb} Mo téléchargés,
+       secteurs ${st.tess.sectors.join(', ')}.${more}
+       Ce résultat n'est pas conservé : rechargez la page et il disparaît.
+       Aucune planète n'est listée, car l'archive des exoplanètes n'est pas
+       joignable depuis un navigateur ; tapez une période pour replier.`
+    : `<b>Computed in your browser</b> in ${secs} s, ${mb} MB downloaded,
+       sectors ${st.tess.sectors.join(', ')}.${more}
+       This result is not kept: reload and it is gone. No planets are listed,
+       because the exoplanet archive cannot be reached from a browser; type a
+       period to fold on.`;
+  return `<div class="verdict yes">${txt}</div>`;
 }
 
 /* Follow a request and draw the bar. */
@@ -505,7 +647,52 @@ function inAnyRange(t, ranges) {
  * thinning is uniform and never touches a cadence inside a flare: those are
  * the ones worth seeing at full resolution, and they are a small fraction.
  */
+/* A star computed in the browser carries plain arrays rather than the binary
+ * grid a precomputed one does. Turn them into the same block structure, so
+ * everything downstream — the broken axis, the thinning, the colouring — is
+ * one code path rather than two. */
+function blocksFromArrays(t, f, sector) {
+  const blocks = [];
+  let i0 = 0;
+  for (let i = 1; i <= t.length; i++) {
+    const brk = i === t.length ||
+      sector[i] !== sector[i - 1] || (t[i] - t[i - 1]) > 2.0;
+    if (!brk) continue;
+    const n = i - i0;
+    if (n >= 2) {
+      const dt = (t[i - 1] - t[i0]) / (n - 1);
+      blocks.push({ t0: t[i0], dt, n, off: i0, sector: sector[i0],
+                    span: t[i - 1] - t[i0] });
+    }
+    i0 = i;
+  }
+  return blocks;
+}
+
 function decodeSeries(budget = 180000) {
+  // Two shapes of the same thing: the binary grid of a catalogue star, or
+  // the arrays of one just computed here.
+  if (!star.series && star.inline_series) {
+    const s = star.inline_series;
+    const blocks = blocksFromArrays(s.t, s.f, s.sector);
+    const axis = buildAxis(blocks);
+    const ranges = flareRanges(star.flares);
+    const total = s.t.length;
+    const step = Math.max(1, Math.ceil(total / budget));
+    const qx = [], qy = [], qt = [], fx = [], fy = [], ft = [];
+    for (const b of axis.laid) {
+      for (let k = 0; k < b.n; k++) {
+        const i = b.off + k;
+        const hot = inAnyRange(s.t[i], ranges);
+        if (!hot && (k % step)) continue;
+        const x = b.x0 + (s.t[i] - b.t0);
+        if (hot) { fx.push(x); fy.push(s.f[i]); ft.push(s.t[i]); }
+        else { qx.push(x); qy.push(s.f[i]); qt.push(s.t[i]); }
+      }
+    }
+    return { axis, qx, qy, qt, fx, fy, ft, total, step };
+  }
+
   const { blocks, scale, nodata } = star.series;
   const values = star.values;
   const axis = buildAxis(blocks);
@@ -533,7 +720,8 @@ function decodeSeries(budget = 180000) {
 }
 
 function drawSeries() {
-  if (!star.series || !star.values) { $('seriescard').hidden = true; return; }
+  const haveSeries = (star.series && star.values) || star.inline_series;
+  if (!haveSeries) { $('seriescard').hidden = true; return; }
   const d = decodeSeries();
   const { axis } = d;
 
@@ -604,7 +792,10 @@ function drawSeries() {
   $('seriesnote').textContent =
     `${star.tess.sectors.length} ${t('sectors')} (${star.tess.sectors.join(', ')}) · ` +
     `${d.total.toLocaleString()} ${t('cadences')}${thinned} · ` +
-    `${ex.toFixed(1)} d ${t('exposure').toLowerCase()} · ${star.tess.author}`;
+    `${ex.toFixed(1)} d ${t('exposure').toLowerCase()}` +
+    (star.computed_here
+      ? ` · ${lang === 'fr' ? 'calculé ici' : 'computed here'}`
+      : ` · ${star.tess.author}`);
 }
 
 function stat(k, v, cls = '') {
