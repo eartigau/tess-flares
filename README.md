@@ -30,9 +30,25 @@ phase bin then follows by integration, so the exposure-weighted reference the
 Kuiper test needs is exact for any period, and reproduces the pipeline's
 cadence-summed exposure to better than 0.2%.
 
-The displayed series is decimated to about 4000 binned points, plus every
-cadence within 43 minutes of a flare so a flare still looks like a flare when
-you zoom in, capped at 40,000 full-resolution points.
+**Every photometric cadence is shipped**, not a binned summary. The series
+goes in a separate binary file as Int16 on a regular per-block grid: within a
+block the cadences sit on a fixed step, so a slot's time is `t0 + i*dt` and
+only the flux has to be stored, 2 bytes against the ~14 a JSON number costs.
+AU Mic's 218,570 cadences are 467 kB; TOI-700's 2.6 million are 5.4 MB rather
+than 38. The flux scale is per star, `max|flux-1|/32000`, putting the
+quantisation between 1 and 10 ppm, far below any star's noise.
+
+**The x axis is broken.** TESS observes in sectors separated by months or
+years, and on a true time axis these data are slivers in white: TOI-1452
+spans 1979 days of which 848 hold data. Blocks of continuous observation are
+laid side by side with a shaded band at each break, labelled with the sector
+and the real starting date. Every point keeps its true BJD in its hover text,
+and no statistic uses the display coordinate.
+
+**Points inside a flare are coloured separately**, recomputed in the browser
+from the catalogue's first and last contact times. Drawing is thinned to
+~150,000 points since a browser is 1600 px wide, but in-flare cadences are
+never thinned and the factor is printed under the plot.
 
 ## What it computes
 
@@ -71,7 +87,8 @@ assets/i18n.js      every string and every (i) box, EN and FR
 assets/theme.css    the shared house style
 assets/app.css      this tool's own rules
 data/index.json     the catalogue
-data/<star>.json    one star: flares, coverage intervals, display series
+data/<star>.json    one star: flares, coverage intervals, series header
+data/<star>.bin     every photometric cadence, Int16 on a regular grid
 ```
 
 Rebuild or extend the catalogue with `web/precompute.py` in
