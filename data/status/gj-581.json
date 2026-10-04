@@ -1,4 +1,1 @@
-{"name": "GJ 581", "state": "running",
- "step": "queued", "step_index": 0, "n_steps": 6,
- "message": "Queued", "detail": "", "elapsed_s": 0,
- "run_url": "https://github.com/eartigau/tess-flares/actions/runs/37211807638"}
+{"name": "GJ 581", "state": "done", "step": "done", "step_index": 6, "n_steps": 6, "steps": [{"key": "resolve", "label": "Resolving the name"}, {"key": "search", "label": "Searching MAST"}, {"key": "download", "label": "Downloading the light curve"}, {"key": "detrend", "label": "Detrending"}, {"key": "detect", "label": "Detecting flares"}, {"key": "write", "label": "Writing the catalogue entry"}], "message": "Done", "detail": "", "started": "2026-10-04T15:07:55Z", "elapsed_s": 44.2, "slug": "gj-581", "error": null, "resolved": {"host": "GJ 581", "tic": 36853511, "n_planets": 3}, "products": {"SPOC": 4, "TESS-SPOC": 1, "QLP": 2}, "summary": {"name": "GJ 581", "n_flares": 2, "exposure_days": 27.81, "rate_per_day": 0.07193, "sectors": [51, 91], "min_amplitude": 0.00287246}}
