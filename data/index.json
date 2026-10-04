@@ -21,7 +21,7 @@
     72
    ],
    "min_amplitude": 0.03331287,
-   "bytes": 997990
+   "bytes": 881244
   },
   {
    "slug": "au-mic",
@@ -47,7 +47,7 @@
     95
    ],
    "min_amplitude": 0.00199044,
-   "bytes": 623332
+   "bytes": 478232
   },
   {
    "slug": "ev-lac",
@@ -71,7 +71,7 @@
     84
    ],
    "min_amplitude": 0.00369192,
-   "bytes": 879400
+   "bytes": 990412
   },
   {
    "slug": "gj-1151",
@@ -94,7 +94,7 @@
     75
    ],
    "min_amplitude": 0.00916855,
-   "bytes": 25133
+   "bytes": 236606
   },
   {
    "slug": "gj-1243",
@@ -122,7 +122,7 @@
     82
    ],
    "min_amplitude": 0.00910015,
-   "bytes": 586745
+   "bytes": 1684953
   },
   {
    "slug": "gj-3929",
@@ -146,7 +146,7 @@
     78
    ],
    "min_amplitude": 0.00865211,
-   "bytes": 7691
+   "bytes": 168876
   },
   {
    "slug": "gj-674",
@@ -172,7 +172,7 @@
     104
    ],
    "min_amplitude": 0.00186796,
-   "bytes": 254285
+   "bytes": 1130765
   },
   {
    "slug": "gj-876",
@@ -200,7 +200,7 @@
     92
    ],
    "min_amplitude": 0.00208588,
-   "bytes": 8591
+   "bytes": 739182
   },
   {
    "slug": "hip-67522",
@@ -226,7 +226,7 @@
     102
    ],
    "min_amplitude": 0.00577329,
-   "bytes": 84605
+   "bytes": 706682
   },
   {
    "slug": "kepler-411",
@@ -261,7 +261,7 @@
     82
    ],
    "min_amplitude": 0.01776313,
-   "bytes": 41463
+   "bytes": 2245467
   },
   {
    "slug": "lhs-1140",
@@ -285,7 +285,7 @@
     107
    ],
    "min_amplitude": 0.01606258,
-   "bytes": 16026
+   "bytes": 421781
   },
   {
    "slug": "lp-791-18",
@@ -312,7 +312,7 @@
     100
    ],
    "min_amplitude": 0.0732442,
-   "bytes": 18040
+   "bytes": 854058
   },
   {
    "slug": "proxima-cen",
@@ -341,7 +341,7 @@
     102
    ],
    "min_amplitude": 0.00226377,
-   "bytes": 748190
+   "bytes": 1466390
   },
   {
    "slug": "toi-1452",
@@ -401,7 +401,7 @@
     86
    ],
    "min_amplitude": 0.03245842,
-   "bytes": 108971
+   "bytes": 2641564
   },
   {
    "slug": "toi-3235",
@@ -424,7 +424,7 @@
     102
    ],
    "min_amplitude": 0.05852744,
-   "bytes": 26167
+   "bytes": 440094
   },
   {
    "slug": "toi-700",
@@ -484,7 +484,7 @@
     97
    ],
    "min_amplitude": 0.01139945,
-   "bytes": 131787
+   "bytes": 5638163
   },
   {
    "slug": "trappist-1",
@@ -511,7 +511,7 @@
     70
    ],
    "min_amplitude": 0.10175925,
-   "bytes": 85866
+   "bytes": 171364
   },
   {
    "slug": "wolf-359",
@@ -533,7 +533,7 @@
     72
    ],
    "min_amplitude": 0.00581438,
-   "bytes": 779804
+   "bytes": 621958
   },
   {
    "slug": "yz-cmi",
@@ -555,7 +555,7 @@
     88
    ],
    "min_amplitude": 0.00385416,
-   "bytes": 657754
+   "bytes": 527807
   }
  ],
  "generated": "2026-10-04"

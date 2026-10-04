@@ -182,6 +182,14 @@ async function loadStar(slug) {
     const r = await fetch(`data/${slug}.json`);
     if (!r.ok) throw new Error(`${slug}.json: ${r.status}`);
     star = await r.json();
+    // The photometry: every cadence, Int16 on a regular grid. Fetched as a
+    // binary file rather than inlined, because base64 in JSON would cost a
+    // third more bytes and a parse of millions of numbers.
+    if (star.series && star.series.bin) {
+      const rb = await fetch(`data/${star.series.bin}`);
+      if (!rb.ok) throw new Error(`${star.series.bin}: ${rb.status}`);
+      star.values = new Int16Array(await rb.arrayBuffer());
+    }
   } catch (err) {
     $('msg').innerHTML = `<div class="err">${err.message}</div>`;
     return;
@@ -221,42 +229,158 @@ const AX = {
 };
 const CFG = { displayModeBar: false, responsive: true };
 
+/* The broken axis.
+ *
+ * TESS observes a star in sectors separated by months or years: TOI-1452
+ * spans 1979 days of which 848 hold data, and on a true time axis the
+ * photometry is a few slivers in an ocean of white. So the blocks are laid
+ * side by side on a synthetic coordinate, separated by a fixed visual gap,
+ * and the axis is labelled with the real date at which each block starts.
+ *
+ * Every point keeps its real BJD in the hover text, and the phase statistics
+ * never see this coordinate: it exists for the eye only.
+ */
+const BLOCK_PAD_FRAC = 0.012;     // the visual break, as a fraction of the total
+
+function buildAxis(blocks) {
+  const span = blocks.reduce((a, b) => a + Math.max(b.span, b.dt), 0);
+  const pad = span * BLOCK_PAD_FRAC;
+  let x = 0;
+  const laid = blocks.map((b) => {
+    const entry = { ...b, x0: x, width: Math.max(b.span, b.dt) };
+    x += entry.width + pad;
+    return entry;
+  });
+  return { laid, total: Math.max(x - pad, 1e-9), pad };
+}
+
+/* Which cadences lie inside a flare. The flare list gives first and last
+ * contact, so this needs no extra data: it is recomputed from the catalogue
+ * the page already has. */
+function flareRanges(flares) {
+  return flares.map((f) => [f.t_start, f.t_end]);
+}
+
+function inAnyRange(t, ranges) {
+  // Ranges are sorted by construction (flares are written in time order).
+  let lo = 0, hi = ranges.length - 1;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    if (t < ranges[mid][0]) hi = mid - 1;
+    else if (t > ranges[mid][1]) lo = mid + 1;
+    else return true;
+  }
+  return false;
+}
+
+/* Decode the blocks into plot coordinates, thinning to what the screen can
+ * show.
+ *
+ * All the points are held; `budget` caps only how many are DRAWN. A browser
+ * is about 1600 pixels wide, so 2.7 million points would put 1700 of them in
+ * every pixel column and cost seconds of rendering to look identical. The
+ * thinning is uniform and never touches a cadence inside a flare: those are
+ * the ones worth seeing at full resolution, and they are a small fraction.
+ */
+function decodeSeries(budget = 180000) {
+  const { blocks, scale, nodata } = star.series;
+  const values = star.values;
+  const axis = buildAxis(blocks);
+  const ranges = flareRanges(star.flares);
+
+  let total = 0;
+  for (const b of blocks) total += b.n;
+  const step = Math.max(1, Math.ceil(total / budget));
+
+  const qx = [], qy = [], qt = [], fx = [], fy = [], ft = [];
+  for (const b of axis.laid) {
+    for (let i = 0; i < b.n; i++) {
+      const v = values[b.off + i];
+      if (v === nodata) continue;
+      const t = b.t0 + i * b.dt;
+      const hot = inAnyRange(t, ranges);
+      if (!hot && (i % step)) continue;        // thin the quiescent points only
+      const x = b.x0 + i * b.dt;
+      const y = 1 + v * scale;
+      if (hot) { fx.push(x); fy.push(y); ft.push(t); }
+      else { qx.push(x); qy.push(y); qt.push(t); }
+    }
+  }
+  return { axis, qx, qy, qt, fx, fy, ft, total, step };
+}
+
 function drawSeries() {
-  const d = star.display;
+  if (!star.series || !star.values) { $('seriescard').hidden = true; return; }
+  const d = decodeSeries();
+  const { axis } = d;
+
   const traces = [{
-    x: d.binned.t, y: d.binned.f, type: 'scattergl', mode: 'lines',
-    line: { color: 'rgba(150,180,220,0.75)', width: 1 },
-    name: 'binned', hoverinfo: 'skip',
+    x: d.qx, y: d.qy, type: 'scattergl', mode: 'markers',
+    marker: { color: 'rgba(130,165,205,0.55)', size: 2 },
+    name: lang === 'fr' ? 'hors flare' : 'out of flare',
+    customdata: d.qt,
+    hovertemplate: 'BJD %{customdata:.5f}<br>%{y:.5f}<extra></extra>',
+  }, {
+    x: d.fx, y: d.fy, type: 'scattergl', mode: 'markers',
+    marker: { color: '#ffc27a', size: 3.4 },
+    name: lang === 'fr' ? 'pendant un flare' : 'in flare',
+    customdata: d.ft,
+    hovertemplate: 'BJD %{customdata:.5f}<br>%{y:.5f}<extra></extra>',
   }];
-  if (d.full.t.length) {
-    traces.push({
-      x: d.full.t, y: d.full.f, type: 'scattergl', mode: 'markers',
-      marker: { color: 'rgba(255,194,122,0.85)', size: 2.5 },
-      name: 'near flares', hoverinfo: 'skip',
-    });
-  }
-  if (star.flares.length) {
-    traces.push({
-      x: star.flares.map((f) => f.t_peak),
-      y: star.flares.map((f) => 1 + f.amplitude),
-      type: 'scattergl', mode: 'markers',
-      marker: { color: '#ffc27a', size: 9, symbol: 'triangle-down',
-                line: { color: '#2a1a08', width: 1 } },
-      text: star.flares.map((f) =>
-        `${(f.amplitude * 100).toFixed(2)}% · ${f.peak_sigma.toFixed(1)}σ · ` +
-        `ED ${f.ed_sec.toFixed(1)} s · S${f.sector}`),
-      hovertemplate: '%{text}<br>BJD %{x:.4f}<extra></extra>',
-    });
-  }
+
+  // The block boundaries, and a tick at the real date each one starts.
+  //
+  // Every boundary is drawn, but not every one is labelled: TOI-1452 has 68
+  // blocks across 40 sectors, and 68 labels on a 1400 px axis overlap into an
+  // unreadable band. One label per sector, and at most ~18 of them, keeps the
+  // axis legible while the shaded breaks still show where every gap is.
+  const shapes = [], tickvals = [], ticktext = [];
+  const labelEvery = Math.max(1, Math.ceil(axis.laid.length / 18));
+  let lastSector = null;
+  axis.laid.forEach((b, i) => {
+    if (i) {
+      shapes.push({
+        type: 'rect', xref: 'x', yref: 'paper',
+        x0: b.x0 - axis.pad, x1: b.x0, y0: 0, y1: 1,
+        fillcolor: 'rgba(200,220,255,0.07)', line: { width: 0 }, layer: 'below',
+      });
+    }
+    const newSector = b.sector !== lastSector;
+    if (newSector && (i % labelEvery === 0 || i === 0)) {
+      tickvals.push(b.x0 + b.width / 2);
+      ticktext.push(`S${b.sector}<br>${b.t0.toFixed(0)}`);
+    }
+    lastSector = b.sector;
+  });
+
   Plotly.react('series', traces, {
     ...AX,
-    xaxis: { ...AX.xaxis, title: 'BJD (TDB)' },
+    showlegend: true,
+    legend: { x: 0.01, y: 1.14, orientation: 'h',
+              bgcolor: 'rgba(4,10,20,0.65)',
+              bordercolor: 'rgba(200,220,255,0.16)', borderwidth: 1 },
+    margin: { ...AX.margin, t: 34, b: 56 },
+    shapes,
+    xaxis: {
+      ...AX.xaxis, tickvals, ticktext, tickfont: { size: 9 },
+      range: [-axis.pad, axis.total + axis.pad],
+      title: lang === 'fr'
+        ? 'secteur et BJD de début (les intervalles sans données sont supprimés)'
+        : 'sector and starting BJD (empty intervals removed)',
+    },
     yaxis: { ...AX.yaxis, title: lang === 'fr' ? 'flux relatif' : 'relative flux' },
   }, CFG);
+
+  const shown = d.qx.length + d.fx.length;
   const ex = star.tess.exposure_days;
+  const thinned = d.step > 1
+    ? (lang === 'fr'
+       ? ` · ${shown.toLocaleString()} tracés (1 sur ${d.step} hors flare ; tous pendant un flare)`
+       : ` · ${shown.toLocaleString()} drawn (1 in ${d.step} out of flare; all in flare)`)
+    : (lang === 'fr' ? ' · tous tracés' : ' · all drawn');
   $('seriesnote').textContent =
     `${star.tess.sectors.length} ${t('sectors')} (${star.tess.sectors.join(', ')}) · ` +
-    `${star.tess.n_cadences.toLocaleString()} ${t('cadences')} · ` +
+    `${d.total.toLocaleString()} ${t('cadences')}${thinned} · ` +
     `${ex.toFixed(1)} d ${t('exposure').toLowerCase()} · ${star.tess.author}`;
 }
 
