@@ -1,0 +1,4 @@
+{"name": "GJ 3323", "state": "running",
+ "step": "queued", "step_index": 0, "n_steps": 6,
+ "message": "Queued", "detail": "", "elapsed_s": 0,
+ "run_url": "https://github.com/eartigau/tess-flares/actions/runs/37211989225"}
