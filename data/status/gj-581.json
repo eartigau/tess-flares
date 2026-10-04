@@ -1,1 +1,4 @@
-{"name": "GJ 581", "state": "failed", "step": "download", "step_index": 2, "n_steps": 6, "steps": [{"key": "resolve", "label": "Resolving the name"}, {"key": "search", "label": "Searching MAST"}, {"key": "download", "label": "Downloading the light curve"}, {"key": "detrend", "label": "Detrending"}, {"key": "detect", "label": "Detecting flares"}, {"key": "write", "label": "Writing the catalogue entry"}], "message": "Failed", "detail": "7 products, SPOC, TESS-SPOC, QLP", "started": "2026-10-04T15:05:05Z", "elapsed_s": 31.5, "slug": null, "error": "AttributeError: module 'numpy' has no attribute 'trapz'", "resolved": {"host": "GJ 581", "tic": 36853511, "n_planets": 3}, "products": {"SPOC": 4, "TESS-SPOC": 1, "QLP": 2}}
+{"name": "GJ 581", "state": "running",
+ "step": "queued", "step_index": 0, "n_steps": 6,
+ "message": "Queued", "detail": "", "elapsed_s": 0,
+ "run_url": "https://github.com/eartigau/tess-flares/actions/runs/37211807638"}
